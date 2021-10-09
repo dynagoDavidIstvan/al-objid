@@ -1,8 +1,8 @@
 export default async (context) => {
     context.res = {
-        status: 410,
-        body: "Invoke v2/createPool instead. [STATUS_REASON=APP_UPGRADED_V2]"
-    }
+        status: 503,
+        body: "https://vjeko.com/2021/10/04/al-object-id-ninja-scheduled-maintenance-announcement-october-9-at-1900-cet/",
+    };
 }
 
 // import { BodyWithRanges, PoolReference } from "../../../common/types";
