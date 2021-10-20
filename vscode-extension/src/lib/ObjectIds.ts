@@ -29,7 +29,7 @@ export function getObjectDefinitions(uris: Uri[]): ALObject[] {
         for (let uri of uris) {
             let file = fs.readFileSync(uri.fsPath).toString();
 
-            let tokenStream = new TokenStream(file);
+            let tokenStream = new TokenStream(file, { checked: [], defined: ["geez"] });
             while (!tokenStream.eof) {
                 let token = tokenStream.read();
                 if (!token) {
@@ -38,7 +38,7 @@ export function getObjectDefinitions(uris: Uri[]): ALObject[] {
                 tokens.push(token);
                 // output.log(`Token ${token.type} (${token.startsAt.line}, ${token.startsAt.column}): ${token.value}`);
             }
-            const parser = new Parser(file);
+            const parser = new Parser(file, []);
             const objects = parser.parseObjects([]);
             // objects.push(...parseObjects(file, bestPractice));
         }

@@ -1,4 +1,5 @@
 import { OBJECT_TYPES } from "../constants";
+import { ConditionalSymbolState } from "./ConditionalSymbolState";
 import { DirectiveToken, Token } from "./Token";
 import { TokenStream } from "./TokenStream";
 import { TokenType } from "./TokenType";
@@ -8,13 +9,6 @@ interface ALObject {
     id: string;
 }
 
-interface ParserState {
-    symbols: {
-        checked: string[],
-        defined: string[],
-    }
-}
-
 const ERROR = Symbol("ERROR");
 
 const OBJECT_TYPE_LIST = `|${OBJECT_TYPES.join("|")}|`;
@@ -22,8 +16,11 @@ const OBJECT_TYPE_LIST = `|${OBJECT_TYPES.join("|")}|`;
 export class Parser {
     private _lexer: TokenStream;
 
-    constructor(input: string) {
-        this._lexer = new TokenStream(input);
+    constructor(input: string, symbols: string[]) {
+        this._lexer = new TokenStream(input, { 
+            defined: symbols,
+            checked: [],
+         });
     }
 
     private createObject(type: string) {
@@ -67,39 +64,6 @@ export class Parser {
         return null;
     }
 
-    private maybeDirective(state: ParserState) {
-        if (this.isDirective()) {
-            this.parseDirective(state);
-        }
-    }
-
-    private parseDirective(state: ParserState): any {
-        const token = this._lexer.read<DirectiveToken>()!;
-        switch (token.directive) {
-            case "define":
-                if (!state.symbols.defined.includes(token.symbol)) {
-                    state.symbols.defined.push(token.symbol);
-                }
-                break;
-            case "undefine":
-                if (state.symbols.defined.includes(token.symbol)) {
-                    state.symbols.defined = state.symbols.defined.filter(symbol => symbol !== token.symbol);
-                }
-                break;
-            case "elif":
-            case "if":
-                if (!state.symbols.checked.includes(token.symbol)) {
-                    state.symbols.checked.push(token.symbol);
-                }
-                break;
-        }
-        return {
-            type: "directive",
-            subtype: token.directive,
-            value: token.symbol,
-        };
-    }
-
     private parseObjectDeclaration(): any {
         let token = this._lexer.read()!;
         const result: any = {
@@ -110,22 +74,19 @@ export class Parser {
         return result;
     }
 
-    private parseObjectType(state: ParserState): string | null {
-        this.maybeDirective(state);
+    private parseObjectType(state: ConditionalSymbolState): string | null {
         return this.isObjectTypeDeclaration() ? this._lexer.read()!.value : null;
     }
 
-    private parseObjectId(state: ParserState): number | null {
-        this.maybeDirective(state);
+    private parseObjectId(state: ConditionalSymbolState): number | null {
         return this.maybeObjectId();
     }
 
-    private parseIdentifier(state: ParserState): string | null {
-        this.maybeDirective(state);
+    private parseIdentifier(state: ConditionalSymbolState): string | null {
         return this.isIdentifier() ? this._lexer.read()!.value : null;
     }
 
-    private parseObject(state: ParserState): any {
+    private parseObject(state: ConditionalSymbolState): any {
         const objectType = this.parseObjectType(state);
         if (!objectType) {
             return null;
@@ -161,19 +122,17 @@ export class Parser {
         }
     }
 
-    private *parse() {
-
-    }
-
     private getObjects(symbols: string[]): any {
         let root: any = {
             type: "root",
             contents: [],
-            symbolsChecked: [],
-            symbolsDefined: symbols,
+            symbols: {
+                checked: [],
+                defined: symbols,
+            },
         };
         while (!this._lexer.eof) {
-            const object =this.parseObject(root);
+            const object = this.parseObject(root);
             if (object) {
                 root.contents.push(object);
                 continue;

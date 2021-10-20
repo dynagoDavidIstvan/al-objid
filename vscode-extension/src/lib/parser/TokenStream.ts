@@ -1,6 +1,8 @@
+import { ActiveConditionalSymbol } from "./ActiveConditionalSymbol";
 import { CharacterStream } from "./CharacterStream";
+import { ConditionalBlock, ConditionalSymbolState } from "./ConditionalSymbolState";
 import { Predicate } from "./Predicate";
-import { DirectiveToken, Token } from "./Token";
+import { Token } from "./Token";
 import { TokenType } from "./TokenType";
 
 const UNTIL_END_OF_LINE = Symbol("UNTIL_END_OF_LINE");
@@ -10,10 +12,14 @@ const UNTIL_WORD_BREAK = Symbol("UNTIL_WORD_BREAK");
 export class TokenStream {
     private _input: CharacterStream;
     private _current: Token | null;
+    private _symbolState: ConditionalSymbolState;
+    private _activeSymbols: ActiveConditionalSymbol[];
 
-    constructor(input: string) {
+    constructor(input: string, symbolState: ConditionalSymbolState) {
         this._input = new CharacterStream(input);
         this._current = null;
+        this._symbolState = symbolState;
+        this._activeSymbols = [];
     }
 
     private createTokenFromPredicate(type: TokenType, predicate: Predicate<string>): Token {
@@ -191,12 +197,47 @@ export class TokenStream {
         });
     }
 
-    private readDirective(): DirectiveToken {
-        const token = this.createTokenFromPredicate(TokenType.directive, () => UNTIL_END_OF_LINE) as DirectiveToken;
-        const parts = token.value.split(" ");
-        token.directive = parts[0].substring(1).toLowerCase();
-        token.symbol = token.value.substring(token.directive.length + 2);
-        return token;
+    private activateConditional(symbol: string, block: ConditionalBlock) {
+        const activeSymbol = {symbol, block} as ActiveConditionalSymbol;
+        this._activeSymbols.push(activeSymbol);
+        activeSymbol.satisfied = this.isLastConditionalSatisfied();
+    }
+
+    private readDirective() {
+        const value = this.readWhile(() => UNTIL_END_OF_LINE);
+        const parts = value.split(" ");
+        const directive = parts[0].substring(1).toLowerCase();
+        const symbol = value.substring(directive.length + 2);
+
+        switch (directive) {
+            case "define":
+                if (!this._symbolState.defined.includes(symbol)) {
+                    this._symbolState.defined.push(symbol);
+                }
+                break;
+            case "undefine":
+                if (this._symbolState.defined.includes(symbol)) {
+                    this._symbolState.defined = this._symbolState.defined.filter(s => s !== symbol);
+                }
+                break;
+            case "if":
+                this.activateConditional(symbol, ConditionalBlock.if);
+                break;
+            case "elif":
+                this._activeSymbols.pop();
+                this.activateConditional(symbol, ConditionalBlock.if);
+                break;
+            case "else":
+                const last = this._activeSymbols.slice(-1);
+                if (last && last[0]) {
+                    last[0].block = ConditionalBlock.else;
+                    last[0].satisfied = this.isLastConditionalSatisfied();
+                }
+                break;
+            case "endif":
+                this._activeSymbols.pop();
+                break;
+        }
     }
 
     private readMultiSymbol() {
@@ -217,11 +258,11 @@ export class TokenStream {
         return this.createTokenFromPredicate(TokenType.word, () => UNTIL_WORD_BREAK);
     }
 
-    private next(): Token | null {
+    private innerNext(): Token | null {
         if (this._input.eof) {
             return null;
         }
-        
+
         let char = this._input.peek();
 
         if (this.isWhitespace(char)) {
@@ -236,11 +277,12 @@ export class TokenStream {
 
         if (this.isComment(char)) {
             this.skipComment();
-            return this.next();
+            return this.innerNext();
         }
 
         if (this.isDirective(char)) {
-            return this.readDirective();
+            this.readDirective();
+            return this.innerNext();
         }
 
         if (this.isNumber(char)) {
@@ -264,6 +306,40 @@ export class TokenStream {
         }
 
         return this.readWord();
+    }
+
+    private isLastConditionalSatisfied(): boolean {
+        if (!this._activeSymbols.length) {
+            return true;
+        }
+        const { symbol, block } = this._activeSymbols.slice(-1)[0];
+        const defined = this._symbolState.defined.includes(symbol);
+        return block == ConditionalBlock.if ? defined : !defined;
+    }
+
+    private isConditionalSatisfied(): boolean {
+        if (!this._activeSymbols.length) {
+            return true;
+        }
+        for (let i = 0; i < this._activeSymbols.length; i++) {
+            if (!this._activeSymbols[i].satisfied) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private next(): Token | null {
+        let token = this.innerNext();
+        if (!this._activeSymbols.length) {
+            return token;
+        }
+
+        while (token && !this.isConditionalSatisfied()) {
+            token = this.innerNext();
+        }
+
+        return token;
     }
 
     read<T extends Token = Token>(): T | null {
