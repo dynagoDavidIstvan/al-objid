@@ -39,7 +39,7 @@ export function getObjectDefinitions(uris: Uri[]): ALObject[] {
                 // output.log(`Token ${token.type} (${token.startsAt.line}, ${token.startsAt.column}): ${token.value}`);
             }
             const parser = new Parser(file);
-            const objects = parser.parseObjects();
+            const objects = parser.parseObjects([]);
             // objects.push(...parseObjects(file, bestPractice));
         }
         const duration = performance.now() - start;

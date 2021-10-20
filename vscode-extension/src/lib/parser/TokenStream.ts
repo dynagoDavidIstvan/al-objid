@@ -195,9 +195,7 @@ export class TokenStream {
         const token = this.createTokenFromPredicate(TokenType.directive, () => UNTIL_END_OF_LINE) as DirectiveToken;
         const parts = token.value.split(" ");
         token.directive = parts[0].substring(1).toLowerCase();
-        if (parts.length > 1) {
-            token.symbol = parts[1].toLowerCase();
-        }
+        token.symbol = token.value.substring(token.directive.length + 2);
         return token;
     }
 
@@ -220,6 +218,10 @@ export class TokenStream {
     }
 
     private next(): Token | null {
+        if (this._input.eof) {
+            return null;
+        }
+        
         let char = this._input.peek();
 
         if (this.isWhitespace(char)) {

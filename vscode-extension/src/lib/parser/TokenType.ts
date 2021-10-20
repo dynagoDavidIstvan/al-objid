@@ -4,5 +4,4 @@ export enum TokenType {
     symbol = "symbol",
     string = "string",
     word = "word",
-    objectDeclarationType = "objectDeclarationType",
 }
