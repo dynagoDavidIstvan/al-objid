@@ -8,3 +8,8 @@ export interface Token {
         column: number,
     };
 }
+
+export interface DirectiveToken extends Token {
+    directive: string;
+    symbol: string;
+}

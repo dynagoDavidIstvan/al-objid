@@ -1,6 +1,6 @@
 export enum TokenType {
     number = "number",
-    pragma = "pragma",
+    directive = "directive",
     symbol = "symbol",
     string = "string",
     word = "word",

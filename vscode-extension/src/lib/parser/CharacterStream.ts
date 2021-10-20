@@ -1,3 +1,7 @@
+import { EOL } from "os";
+
+const EOL_LENGTH = EOL.length;
+
 export class CharacterStream {
     private _input: string;
     private _length: number;
@@ -14,7 +18,7 @@ export class CharacterStream {
     }
 
     read(): string {
-        const char = this._input[this._position++];
+        let char = this._input[this._position++];
         if (char === "\n") {
             this._line++;
             this._column = 0;
@@ -33,7 +37,15 @@ export class CharacterStream {
     }
 
     get eol(): boolean {
-        return this.peek() === "\n";
+        if (EOL_LENGTH === 1) {
+            return this._input[this._position] === EOL;
+        }
+        for (let i = 0; i < EOL_LENGTH; i++) {
+            if (this._input[this._position + i] !== EOL[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     get line(): number {

@@ -1,6 +1,6 @@
 import { CharacterStream } from "./CharacterStream";
 import { Predicate } from "./Predicate";
-import { Token } from "./Token";
+import { DirectiveToken, Token } from "./Token";
 import { TokenType } from "./TokenType";
 
 const UNTIL_END_OF_LINE = Symbol("UNTIL_END_OF_LINE");
@@ -16,12 +16,20 @@ export class TokenStream {
         this._current = null;
     }
 
-    private createToken(type: TokenType, predicate: Predicate<string>): Token {
+    private createTokenFromPredicate(type: TokenType, predicate: Predicate<string>): Token {
         const startsAt = {
             line: this._input.line,
             column: this._input.column
         };
         const value = this.readWhile(predicate);
+        return { type, value, startsAt };
+    }
+
+    private createTokenFromString(type: TokenType, value: string): Token {
+        const startsAt = {
+            line: this._input.line,
+            column: this._input.column
+        };
         return { type, value, startsAt };
     }
 
@@ -41,12 +49,20 @@ export class TokenStream {
         return char === "\"";
     }
 
-    private isPragma(char: string): boolean {
+    private isDirective(char: string): boolean {
         return char === "#";
     }
 
+    private isBoundarySymbol(char: string): boolean {
+        return `{}[]();.,=:+-*/<>#"'`.indexOf(char) >= 0;
+    }
+
     private isSymbol(char: string): boolean {
-        return "{}[]():;.,=+-*/".indexOf(char) >= 0;
+        return "{}[]();.,=".indexOf(char) >= 0;
+    }
+
+    private isMultiSymbol(char: string): boolean {
+        return ":+-*/<>".indexOf(char) >= 0;
     }
 
     private isString(char: string): boolean {
@@ -104,7 +120,7 @@ export class TokenStream {
                     break;
                 case UNTIL_WORD_BREAK:
                     next = this._input.peek();
-                    while (!this._input.eof && !this._input.eol && !this.isWhitespace(next) && !this.isSymbol(next)) {
+                    while (!this._input.eof && !this._input.eol && !this.isWhitespace(next) && !this.isBoundarySymbol(next)) {
                         result += this._input.read();
                         next = this._input.peek();
                     }
@@ -116,13 +132,23 @@ export class TokenStream {
     }
 
     private readNumber(): Token {
-        return this.createToken(TokenType.number, () => UNTIL_WORD_BREAK);
+        let hasDot = false;
+        return this.createTokenFromPredicate(TokenType.number, char => {
+            if (char === ".") {
+                if (hasDot) {
+                    return false;
+                }
+                hasDot = true;
+                return true;
+            }
+            return this.isNumber(char);
+        });
     }
 
     private readQuotedIdentifier(): Token {
         let escape = false;
         let finish = false;
-        return this.createToken(TokenType.word, (char) => {
+        return this.createTokenFromPredicate(TokenType.word, (char) => {
             if (finish) {
                 return false;
             }
@@ -145,7 +171,7 @@ export class TokenStream {
     private readString(): Token {
         let escape = false;
         let finish = false;
-        return this.createToken(TokenType.string, (char) => {
+        return this.createTokenFromPredicate(TokenType.string, (char) => {
             if (finish) {
                 return false;
             }
@@ -165,16 +191,32 @@ export class TokenStream {
         });
     }
 
-    private readPragma(): Token {
-        return this.createToken(TokenType.pragma, () => UNTIL_END_OF_LINE);
+    private readDirective(): DirectiveToken {
+        const token = this.createTokenFromPredicate(TokenType.directive, () => UNTIL_END_OF_LINE) as DirectiveToken;
+        const parts = token.value.split(" ");
+        token.directive = parts[0].substring(1).toLowerCase();
+        if (parts.length > 1) {
+            token.symbol = parts[1].toLowerCase();
+        }
+        return token;
+    }
+
+    private readMultiSymbol() {
+        const first = this._input.read();
+        const next = this._input.peek();
+        const token = this.createTokenFromString(TokenType.symbol, first);
+        if ((first === ":" && next == ":") || (next === "=")) {
+            token.value += this._input.read();
+        }
+        return token;
     }
 
     private readSymbol(): Token {
-        return this.createToken(TokenType.symbol, () => READ_ONE);
+        return this.createTokenFromPredicate(TokenType.symbol, () => READ_ONE);
     }
 
     private readWord(): Token {
-        return this.createToken(TokenType.word, () => UNTIL_WORD_BREAK);
+        return this.createTokenFromPredicate(TokenType.word, () => UNTIL_WORD_BREAK);
     }
 
     private next(): Token | null {
@@ -195,8 +237,8 @@ export class TokenStream {
             return this.next();
         }
 
-        if (this.isPragma(char)) {
-            return this.readPragma();
+        if (this.isDirective(char)) {
+            return this.readDirective();
         }
 
         if (this.isNumber(char)) {
@@ -211,6 +253,10 @@ export class TokenStream {
             return this.readString();
         }
 
+        if (this.isMultiSymbol(char)) {
+            return this.readMultiSymbol();
+        }
+
         if (this.isSymbol(char)) {
             return this.readSymbol();
         }
@@ -218,17 +264,17 @@ export class TokenStream {
         return this.readWord();
     }
 
-    read(): Token | null {
+    read<T extends Token = Token>(): T | null {
         if (this._current) {
             const token = this._current;
             this._current = null;
-            return token;
+            return token as T;
         }
-        return this.next();
+        return this.next() as T;
     }
 
-    peek(): Token | null {
-        return this._current || (this._current = this.next());
+    peek<T extends Token = Token>(): T | null {
+        return (this._current || (this._current = this.next())) as T;
     }
 
     get line(): number {

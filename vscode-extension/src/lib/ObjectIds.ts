@@ -7,6 +7,7 @@ import { executeWithStopwatch, executeWithStopwatchAsync } from "./MeasureTime";
 import * as fs from "fs";
 import { TokenStream } from "./parser/TokenStream";
 import { performance } from "perf_hooks";
+import { Parser } from "./parser/Parser";
 
 export async function getWorkspaceFolderFiles(uri: Uri): Promise<Uri[]> {
     let folderPath: string = uri.fsPath;
@@ -37,9 +38,12 @@ export function getObjectDefinitions(uris: Uri[]): ALObject[] {
                 tokens.push(token);
                 // output.log(`Token ${token.type} (${token.startsAt.line}, ${token.startsAt.column}): ${token.value}`);
             }
+            const parser = new Parser(file);
+            const objects = parser.parseObjects();
             // objects.push(...parseObjects(file, bestPractice));
         }
         const duration = performance.now() - start;
+
         return [];
 
         return objects;

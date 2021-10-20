@@ -1,5 +1,5 @@
 import { OBJECT_TYPES } from "../constants";
-import { Token } from "./Token";
+import { DirectiveToken, Token } from "./Token";
 import { TokenStream } from "./TokenStream";
 import { TokenType } from "./TokenType";
 
@@ -26,6 +26,10 @@ export class Parser {
         };
     }
 
+    isDefineDirective(token: DirectiveToken | null): boolean {
+        return token !== null && token.type == TokenType.directive && token.directive === "define";
+    }
+
     private isObjectDeclaration(token: Token): boolean {
         if (token.type === TokenType.word && (this.isObjectType(token.value) || this.isObjectType(token.value.toLowerCase()))) {
             token.type = TokenType.objectDeclarationType;
@@ -36,6 +40,33 @@ export class Parser {
 
     private isObjectType(word: string) {
         return OBJECT_TYPE_LIST.indexOf("|" + word + "|") > 0;
+    }
+
+    private skipPragmas() {
+        while (!this._tokens.eof) {
+            const token = this._tokens.peek<DirectiveToken>()!;
+            if (token.type !== TokenType.directive || !["pragma", "region", "endregion"].includes(token.directive)) {
+                break;
+            }
+            this._tokens.read();
+        }
+    }
+
+    private parseDefineDirectives(): string[] {
+        const directives = [];
+        while (!this._tokens.eof) {
+            this.skipPragmas();
+            if (this._tokens.eof) {
+                break;
+            }
+
+            if (this.isDefineDirective(this._tokens.peek<DirectiveToken>())) {
+                directives.push(this._tokens.read<DirectiveToken>()!.symbol);
+                continue;
+            }
+            break;
+        }
+        return directives;
     }
 
     private *parseObjectDeclaration(): Generator<ALObject | symbol> {
@@ -53,7 +84,7 @@ export class Parser {
         }
 
         switch (token.type) {
-            case TokenType.pragma:
+            case TokenType.directive:
                 break;
             case TokenType.number:
                 break;
@@ -65,14 +96,25 @@ export class Parser {
     }
 
     private *getObjects(): Generator<ALObject> {
+        const defines = this.parseDefineDirectives();
+        const ifs = [];
+        const trees = [];
+
+        let tree: any = {};
         while (!this._tokens.eof) {
+            this.skipPragmas();
+
+            if (this._tokens.eof) {
+                break;
+            }
+
             let token = this._tokens.read()!;
 
             let objectType: string | undefined;
             switch (token.type) {
                 case TokenType.objectDeclarationType:
                     break;
-                case TokenType.pragma:
+                case TokenType.directive:
                     break;
                 default:
                     return;
