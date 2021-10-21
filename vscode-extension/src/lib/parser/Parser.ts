@@ -1,7 +1,7 @@
 import { OBJECT_TYPES } from "../constants";
 import { ConditionalSymbolState } from "./ConditionalSymbolState";
-import { DirectiveToken, Token } from "./Token";
-import { TokenStream } from "./TokenStream";
+import { Preprocessor } from "./Preprocessor";
+import { DirectiveToken } from "./Token";
 import { TokenType } from "./TokenType";
 
 interface ALObject {
@@ -14,10 +14,10 @@ const ERROR = Symbol("ERROR");
 const OBJECT_TYPE_LIST = `|${OBJECT_TYPES.join("|")}|`;
 
 export class Parser {
-    private _lexer: TokenStream;
+    private _input: Preprocessor;
 
     constructor(input: string, symbols: string[]) {
-        this._lexer = new TokenStream(input, { 
+        this._input = new Preprocessor(input, { 
             defined: symbols,
             checked: [],
          });
@@ -31,7 +31,7 @@ export class Parser {
     }
 
     private isDirective(): boolean {
-        const token = this._lexer.peek<DirectiveToken>();
+        const token = this._input.peek<DirectiveToken>();
         return token !== null && token.type == TokenType.directive;
     }
 
@@ -40,7 +40,7 @@ export class Parser {
     }
 
     private isObjectTypeDeclaration(): boolean {
-        const token = this._lexer.peek();
+        const token = this._input.peek();
         return token !== null && token.type === TokenType.word && (this.isObjectType(token.value) || this.isObjectType(token.value.toLowerCase()));
     }
 
@@ -49,12 +49,12 @@ export class Parser {
     }
 
     private isIdentifier(): boolean {
-        const token = this._lexer.peek();
+        const token = this._input.peek();
         return token !== null && token.type == TokenType.word;
     }
 
     private maybeObjectId(): number | null {
-        const token = this._lexer.read();
+        const token = this._input.read();
         if (token !== null && token.type === TokenType.number) {
             const id = parseInt(token.value);
             if (id) {
@@ -65,7 +65,7 @@ export class Parser {
     }
 
     private parseObjectDeclaration(): any {
-        let token = this._lexer.read()!;
+        let token = this._input.read()!;
         const result: any = {
             type: "object",
             subtype: token.value,
@@ -75,7 +75,7 @@ export class Parser {
     }
 
     private parseObjectType(state: ConditionalSymbolState): string | null {
-        return this.isObjectTypeDeclaration() ? this._lexer.read()!.value : null;
+        return this.isObjectTypeDeclaration() ? this._input.read()!.value : null;
     }
 
     private parseObjectId(state: ConditionalSymbolState): number | null {
@@ -83,7 +83,7 @@ export class Parser {
     }
 
     private parseIdentifier(state: ConditionalSymbolState): string | null {
-        return this.isIdentifier() ? this._lexer.read()!.value : null;
+        return this.isIdentifier() ? this._input.read()!.value : null;
     }
 
     private parseObject(state: ConditionalSymbolState): any {
@@ -113,12 +113,12 @@ export class Parser {
     }
 
     private skipToNextLine() {
-        let line = this._lexer.line;
-        while (this._lexer.line === line) {
-            if (this._lexer.eof) {
+        let line = this._input.line;
+        while (this._input.line === line) {
+            if (this._input.eof) {
                 break;
             }
-            this._lexer.read();
+            this._input.read();
         }
     }
 
@@ -131,7 +131,7 @@ export class Parser {
                 defined: symbols,
             },
         };
-        while (!this._lexer.eof) {
+        while (!this._input.eof) {
             const object = this.parseObject(root);
             if (object) {
                 root.contents.push(object);
@@ -140,7 +140,7 @@ export class Parser {
                 this.skipToNextLine();
                 continue;
             }
-            this._lexer.read();
+            this._input.read();
         }
         debugger;
         return root;

@@ -8,6 +8,7 @@ import * as fs from "fs";
 import { TokenStream } from "./parser/TokenStream";
 import { performance } from "perf_hooks";
 import { Parser } from "./parser/Parser";
+import { Preprocessor } from "./parser/Preprocessor";
 
 export async function getWorkspaceFolderFiles(uri: Uri): Promise<Uri[]> {
     let folderPath: string = uri.fsPath;
@@ -29,7 +30,7 @@ export function getObjectDefinitions(uris: Uri[]): ALObject[] {
         for (let uri of uris) {
             let file = fs.readFileSync(uri.fsPath).toString();
 
-            let tokenStream = new TokenStream(file, { checked: [], defined: ["geez"] });
+            let tokenStream = new Preprocessor(file, { checked: [], defined: ["def2", "geez"] });
             while (!tokenStream.eof) {
                 let token = tokenStream.read();
                 if (!token) {
