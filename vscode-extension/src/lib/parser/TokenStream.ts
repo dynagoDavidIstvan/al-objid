@@ -8,6 +8,8 @@ const UNTIL_WORD_BREAK = Symbol("UNTIL_WORD_BREAK");
 
 export class TokenStream {
     private _input: CharacterStream;
+    private _line: number = 0;
+    private _column: number = 0;
     private _current: Token | null;
 
     constructor(input: string) {
@@ -290,11 +292,18 @@ export class TokenStream {
     }
 
     peek<T extends Token = Token>(): T | null {
+        if (this._current) {
+            return this._current as T;
+        }
         return (this._current || (this._current = this.next())) as T;
     }
 
     get line(): number {
         return this._input.line;
+    }
+
+    get column(): number {
+        return this._input.column;
     }
 
     get eof() {

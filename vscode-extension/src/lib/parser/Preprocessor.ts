@@ -135,6 +135,10 @@ export class Preprocessor {
         return this._input.line;
     }
 
+    get column(): number {
+        return this._input.column;
+    }
+
     get eof() {
         return this.peek() === null;
     }

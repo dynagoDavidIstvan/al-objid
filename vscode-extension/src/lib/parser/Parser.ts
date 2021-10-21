@@ -1,115 +1,239 @@
-import { OBJECT_TYPES } from "../constants";
 import { ConditionalSymbolState } from "./ConditionalSymbolState";
 import { Preprocessor } from "./Preprocessor";
-import { DirectiveToken } from "./Token";
 import { TokenType } from "./TokenType";
 
 interface ALObject {
     type: string;
-    id: string;
+    id: number;
+    name: string;
+    _content: any[];
 }
 
-const ERROR = Symbol("ERROR");
-
-const OBJECT_TYPE_LIST = `|${OBJECT_TYPES.join("|")}|`;
+interface ParserFunction {
+    (object: ALObject): boolean;
+}
+interface ParserDelegate {
+    (): (string | ParserFunction)[];
+}
 
 export class Parser {
     private _input: Preprocessor;
 
     constructor(input: string, symbols: string[]) {
-        this._input = new Preprocessor(input, { 
+        this._input = new Preprocessor(input, {
             defined: symbols,
             checked: [],
-         });
+        });
     }
 
-    private createObject(type: string) {
-        return {
-            type,
-            id: 0,
-        };
-    }
-
-    private isDirective(): boolean {
-        const token = this._input.peek<DirectiveToken>();
-        return token !== null && token.type == TokenType.directive;
-    }
-
-    private isDefineDirective(token: DirectiveToken | null): boolean {
-        return token !== null && token.type == TokenType.directive && token.directive === "define";
-    }
-
-    private isObjectTypeDeclaration(): boolean {
-        const token = this._input.peek();
-        return token !== null && token.type === TokenType.word && (this.isObjectType(token.value) || this.isObjectType(token.value.toLowerCase()));
-    }
-
-    private isObjectType(word: string) {
-        return OBJECT_TYPE_LIST.indexOf("|" + word + "|") >= 0;
-    }
-
-    private isIdentifier(): boolean {
-        const token = this._input.peek();
-        return token !== null && token.type == TokenType.word;
-    }
-
-    private maybeObjectId(): number | null {
-        const token = this._input.read();
-        if (token !== null && token.type === TokenType.number) {
-            const id = parseInt(token.value);
-            if (id) {
-                return id;
+    private skipToSymbol(symbol: string) {
+        let token = this._input.peek();
+        while (token) {
+            if (token.type === TokenType.symbol && token.value === symbol) {
+                return;
             }
+            this._input.read();
+            token = this._input.peek();
         }
-        return null;
     }
 
-    private parseObjectDeclaration(): any {
-        let token = this._input.read()!;
-        const result: any = {
-            type: "object",
-            subtype: token.value,
-            contents: [],
-        };
-        return result;
+    private skipSymbol(symbol: string): boolean {
+        let token = this._input.peek();
+        if (token && token.type === TokenType.symbol && token.value === symbol) {
+            this._input.read();
+            return true
+        }
+        return false;
     }
 
-    private parseObjectType(state: ConditionalSymbolState): string | null {
-        return this.isObjectTypeDeclaration() ? this._input.read()!.value : null;
+    private skipKeyword(keyword: string): boolean {
+        let token = this._input.peek();
+        if (token && token.type === TokenType.word && (token.value === keyword || token.value.toLowerCase() === keyword.toLowerCase())) {
+            this._input.read();
+            return true;
+        }
+        return false;
     }
 
-    private parseObjectId(state: ConditionalSymbolState): number | null {
-        return this.maybeObjectId();
+    private readIdentifier(): string | null {
+        const token = this._input.peek();
+        if (!token || token.type !== TokenType.word) {
+            return null;
+        }
+
+        this._input.read();
+        return token.value;
     }
 
-    private parseIdentifier(state: ConditionalSymbolState): string | null {
-        return this.isIdentifier() ? this._input.read()!.value : null;
+    private getObjectTypeParser(): ParserDelegate | undefined {
+        const token = this._input.peek();
+        if (!token || token.type !== TokenType.word) {
+            return;
+        }
+        return this.parsers[token.value] || this.parsers[token.value.toLowerCase()];
+    }
+
+    private parseObjectId(object: ALObject): boolean {
+        const token = this._input.peek();
+        if (!token || token.type !== TokenType.number) {
+            return false;
+        }
+
+        object._content.push({
+            type: "objectId",
+            position: token.startsAt,
+        });
+        const id = parseInt(token.value);
+        if (id) {
+            this._input.read();
+            object.id = id;
+            return true;
+        }
+        return false;
+    }
+
+    private parseObjectName(object: ALObject): boolean {
+        const token = this._input.peek();
+        if (!token || token.type !== TokenType.word) {
+            return false;
+        }
+
+        object._content.push({
+            type: "objectId",
+            position: token.startsAt,
+        });
+        this._input.read();
+        object.name = token.value;
+        return true;
+    }
+
+    private parseImplements(object: ALObject): boolean {
+        if (!this.skipKeyword("implements")) {
+            return true;
+        }
+
+        const impl = [];
+        while (true) {
+            let identifier = this.readIdentifier();
+            if (!identifier) {
+                return false;
+            }
+            impl.push(identifier);
+            if (this.skipSymbol(",")) {
+                continue;
+            }
+            break;
+        }
+        (object as any).implements = impl;
+        return true;
+    }
+
+    private parseIgnoreBody(): boolean {
+        if (!this.skipSymbol("{")) {
+            return false;
+        }
+        this.skipToSymbol("}");
+        if (!this.skipSymbol("}")) {
+            return false;
+        }
+        return true;
+    }
+
+    private parsers: any = {
+        codeunit: () => [
+            this.parseObjectId,
+            this.parseObjectName,
+            this.parseImplements,
+            this.parseIgnoreBody
+        ],
+        controladdin: () => {
+
+        },
+        dotnet: () => {
+
+        },
+        entitlement: () => {
+
+        },
+        enum: () => {
+
+        },
+        enumextension: () => {
+
+        },
+        interface: () => [
+            this.parseObjectName,
+            this.parseIgnoreBody
+        ],
+        page: () => {
+
+        },
+        pagecustomization: () => {
+
+        },
+        pageextension: () => {
+
+        },
+        permissionset: () => {
+
+        },
+        permissionsetextension: () => {
+
+        },
+        profile: () => {
+
+        },
+        query: () => {
+
+        },
+        report: () => {
+
+        },
+        reportextension: () => {
+
+        },
+        table: () => {
+
+        },
+        tableextension: () => {
+
+        },
+        xmlport: () => {
+
+        },
     }
 
     private parseObject(state: ConditionalSymbolState): any {
-        const objectType = this.parseObjectType(state);
-        if (!objectType) {
+        const parser = this.getObjectTypeParser();
+        if (!parser) {
             return null;
         }
 
-        const id = this.parseObjectId(state);
-        if (!id) {
-            // TODO check non-ID-kinds of objects (interface, controladdin, etc.)
-            return null;
-        }
-
-        const name = this.parseIdentifier(state);
-        if (!name) {
-            return null;
-        }
-
-        return {
-            type: "object",
-            definition: {
-                objectType,
-                id
-            }
+        const declaration = {
+            type: "objectType",
+            // TODO position must be read from token
+            position: [this._input.line, this._input.column],
         };
+        const object = {
+            type: this._input.read()!.value,
+            _content: [declaration],
+        } as ALObject;
+
+        const parts = parser();
+        for (let part of parts) {
+            switch (typeof part) {
+                case "function":
+                    if (!part.call(this, object)) {
+                        if (object.type && object.id && object.name) {
+                            return object;
+                        }
+                        return null
+                    }
+                    break;
+            }
+        }
+
+        return object;
     }
 
     private skipToNextLine() {
@@ -131,6 +255,7 @@ export class Parser {
                 defined: symbols,
             },
         };
+
         while (!this._input.eof) {
             const object = this.parseObject(root);
             if (object) {
