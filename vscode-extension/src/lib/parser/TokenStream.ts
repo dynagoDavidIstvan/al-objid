@@ -6,7 +6,6 @@ import { Token } from "./Token";
 import { TokenType } from "./TokenType";
 
 const UNTIL_END_OF_LINE = Symbol("UNTIL_END_OF_LINE");
-const READ_ONE = Symbol("READ_ONE");
 const UNTIL_WORD_BREAK = Symbol("UNTIL_WORD_BREAK");
 
 export class TokenStream {
@@ -64,11 +63,11 @@ export class TokenStream {
     }
 
     private isSymbol(char: string): boolean {
-        return "{}[]();.,=".indexOf(char) >= 0;
+        return "{}[]();,=".indexOf(char) >= 0;
     }
 
     private isMultiSymbol(char: string): boolean {
-        return ":+-*/<>".indexOf(char) >= 0;
+        return ":.+-*/<>".indexOf(char) >= 0;
     }
 
     private isString(char: string): boolean {
@@ -121,8 +120,6 @@ export class TokenStream {
                     while (!this._input.eof && !this._input.eol) {
                         result += this._input.read();
                     }
-                    break;
-                case READ_ONE:
                     break;
                 case UNTIL_WORD_BREAK:
                     next = this._input.peek();
@@ -198,7 +195,7 @@ export class TokenStream {
     }
 
     private activateConditional(symbol: string, block: ConditionalBlock) {
-        const activeSymbol = {symbol, block} as ActiveConditionalSymbol;
+        const activeSymbol = { symbol, block } as ActiveConditionalSymbol;
         this._activeSymbols.push(activeSymbol);
         activeSymbol.satisfied = this.isLastConditionalSatisfied();
     }
@@ -244,14 +241,31 @@ export class TokenStream {
         const first = this._input.read();
         const next = this._input.peek();
         const token = this.createTokenFromString(TokenType.symbol, first);
-        if ((first === ":" && next == ":") || (next === "=")) {
+
+        let readOneMore = false;
+        switch (first) {
+            case ":":
+                readOneMore = next === ":" || next === "=";
+                break;
+            case ".":
+                readOneMore = next === ".";
+                break;
+            case "<":
+                readOneMore = next === ">";
+                break;
+            default:
+                readOneMore = next === "=";
+                break;
+        }
+        if (readOneMore) {
             token.value += this._input.read();
         }
         return token;
     }
 
     private readSymbol(): Token {
-        return this.createTokenFromPredicate(TokenType.symbol, () => READ_ONE);
+        const first = this._input.read();
+        return this.createTokenFromString(TokenType.symbol, first);
     }
 
     private readWord(): Token {
