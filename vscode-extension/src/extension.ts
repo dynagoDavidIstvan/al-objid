@@ -23,6 +23,7 @@ import { ExplorerDecorationsProvider } from "./features/Explorer/ExplorerDecorat
 import { ConsumptionWarnings } from "./features/ConsumptionWarnings";
 import { Telemetry } from "./lib/Telemetry";
 import { ParserConnector } from "./features/ParserConnector";
+import { WorkspaceWatcher } from "./features/WorkspaceWatcher";
 
 export function activate(context: ExtensionContext) {
 	ConsumptionWarnings.instance.setContext(context);
@@ -51,6 +52,8 @@ export function activate(context: ExtensionContext) {
 
 		// Other
 		languages.registerCompletionItemProvider("al", new NextObjectIdCompletionProvider()),
+		WorkspaceWatcher.instance,
+		ObjectIDHighlighter.instance.getDisposables(),
 		AuthorizationStatusBar.instance.getDisposables(),
 		Output.instance.getDisposables(),
 		Config.instance.getDisposables(),

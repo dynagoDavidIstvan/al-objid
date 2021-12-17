@@ -1,5 +1,5 @@
 import { ALObject } from "@vjeko.com/al-parser-types-ninja";
-import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, languages, Position, Range, window } from "vscode";
+import { Diagnostic, DiagnosticCollection, DiagnosticSeverity, languages, Position, Range, window, workspace } from "vscode";
 import { DisposableHolder } from "./DisposableHolder";
 
 /*
@@ -31,7 +31,7 @@ export class ObjectIDHighlighter extends DisposableHolder {
 
     public updateHighlighting() {
         this._diagnostics.clear();
-        // this._diagnostics.set(window.activeTextEditor?.document.uri!, [this.createWarning()]);
+        this._diagnostics.set(window.activeTextEditor?.document.uri!, [this.createWarning(new Position(0, 10), new Position(0, 16), { type: "codeunit", id: 65102 } as ALObject)]);
     }
 
     protected override prepareDisposables() {

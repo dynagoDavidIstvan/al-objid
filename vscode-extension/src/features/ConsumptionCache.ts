@@ -24,8 +24,10 @@ export class ConsumptionCache {
             }
         }
         let updated = JSON.stringify(this._cache[appId]) !== JSON.stringify(consumption);
-        this._cache[appId] = consumption;
-        ConsumptionWarnings.instance.checkRemainingIds(appId, consumption);
+        if (updated) {
+            this._cache[appId] = consumption;
+            ConsumptionWarnings.instance.checkRemainingIds(appId, consumption);
+        }
         return updated;
     }
 

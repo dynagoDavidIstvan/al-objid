@@ -31,24 +31,24 @@ export class ExplorerTreeDataProvider implements TreeDataProvider<ExplorerItem>,
     private _onDidChangeTreeData: EventEmitter<ExplorerItem | undefined | null | void> = new EventEmitter<ExplorerItem | undefined | null | void>();
     readonly onDidChangeTreeData: Event<ExplorerItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    private onDidChangeWorkspaceFolders() {
-        this.disposeWatchers();
-        this.setUpWatchers();
-        this.refresh();
-    }
+        private onDidChangeWorkspaceFolders() {
+            this.disposeWatchers();
+            this.setUpWatchers();
+            this.refresh();
+        }
 
-    private setUpWatchers() {
-        let folders = ALWorkspace.getALFolders();
-        if (!folders) {
-            return;
+        private setUpWatchers() {
+            let folders = ALWorkspace.getALFolders();
+            if (!folders) {
+                return;
+            }
+            for (let folder of folders) {
+                const manifest = getManifest(folder.uri)!;
+                const watcher = workspace.createFileSystemWatcher(manifest.path);
+                watcher.onDidChange(e => this.refresh());
+                this._watchers.push(watcher);
+            }
         }
-        for (let folder of folders) {
-            const manifest = getManifest(folder.uri)!;
-            const watcher = workspace.createFileSystemWatcher(manifest.path);
-            watcher.onDidChange(e => this.refresh())
-            this._watchers.push(watcher);
-        }
-    }
 
     getTreeItem(element: ExplorerItem) {
         return element;
