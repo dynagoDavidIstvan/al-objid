@@ -33,6 +33,7 @@ jobs:
           npm run build --if-present
           npm run test --if-present
           popd
+          working-directory: al-objid/azure-function-app
 
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
