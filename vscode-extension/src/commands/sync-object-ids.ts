@@ -1,47 +1,44 @@
 import { Uri } from "vscode";
-import { getManifest, getUriFromAppId } from "../lib/AppManifest";
+import { getCachedManifestFromAppId } from "../lib/AppManifest";
 import { Backend } from "../lib/Backend";
 import { UI } from "../lib/UI";
 import { ALWorkspace } from "../lib/ALWorkspace";
-import { ObjIdConfig } from "../lib/ObjIdConfig";
 import { LogLevel, output } from "../features/Output";
 import { ConsumptionInfo } from "../lib/BackendTypes";
 import { LABELS } from "../lib/constants";
-import { getActualConsumption, getObjectDefinitions, getWorkspaceFolderFiles } from "../lib/ObjectIds";
+import {
+    getActualConsumption,
+    getObjectDefinitions,
+    getWorkspaceFolderFiles,
+} from "../lib/ObjectIds";
 import { Telemetry } from "../lib/Telemetry";
+import { AppManifest } from "../lib/types";
 
 interface SyncOptions {
-    merge: boolean,
-    skipQuestion: boolean,
-    uri: Uri,
+    merge: boolean;
+    skipQuestion: boolean;
+    uri: Uri;
 }
 
 /**
  * Synchronizes object ID consumption information with the Azure back end.
- * 
- * @param patch Flag that indicates whether patching (merge) rather than full replace should be done
- * @param uri Uri of a document or a workspace folder for which to run the synchronization
- * @returns 
  */
 export const syncObjectIds = async (options?: SyncOptions, appId?: string) => {
     let uri: Uri | undefined;
+    let manifest: AppManifest | undefined;
     if (!appId) {
-        uri = await ALWorkspace.selectWorkspaceFolder(options?.uri);
-        if (!uri) return;
-
-        const manifest = getManifest(uri);
-
+        manifest = await ALWorkspace.selectWorkspaceFolder(options?.uri);
         if (!manifest) {
-            UI.sync.showNoManifestError();
             return;
         }
 
         appId = manifest.id;
-
     } else {
-        uri = getUriFromAppId(appId);
+        manifest = getCachedManifestFromAppId(appId);
     }
-    let authKey = ObjIdConfig.instance(uri).authKey;
+    uri = manifest.ninja.uri;
+
+    let authKey = manifest.ninja.config.authKey;
 
     if (!options?.merge && !options?.skipQuestion) {
         let consumption = await Backend.getConsumption(appId, authKey);
@@ -58,7 +55,14 @@ export const syncObjectIds = async (options?: SyncOptions, appId?: string) => {
     const consumption: ConsumptionInfo = getActualConsumption(objects);
 
     Telemetry.instance.log("syncIds", appId);
-    if (await Backend.syncIds(appId, consumption, !!(options?.merge), ObjIdConfig.instance(uri).authKey || "")) {
-        UI.sync.showSuccessInfo();
+    if (
+        await Backend.syncIds(
+            appId,
+            consumption,
+            !!options?.merge,
+            manifest.ninja.config.authKey || ""
+        )
+    ) {
+        UI.sync.showSuccessInfo(manifest);
     }
-}
+};

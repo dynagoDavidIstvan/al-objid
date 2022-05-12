@@ -1,27 +1,18 @@
 import path = require("path");
 import { Disposable, RelativePattern, Uri, workspace } from "vscode";
 import { ALWorkspace } from "../lib/ALWorkspace";
-import { AppManifest, getManifest } from "../lib/AppManifest";
-import { authorization } from "../lib/Authorization";
+import { getManifest } from "../lib/AppManifest";
 import { Backend } from "../lib/Backend";
-import { LABELS } from "../lib/constants";
+import { DOCUMENTS, LABELS } from "../lib/constants";
+import { showDocument } from "../lib/functions";
 import { Git } from "../lib/Git";
-import { ObjIdConfig } from "../lib/ObjIdConfig";
 import { Telemetry } from "../lib/Telemetry";
+import { AppManifest } from "../lib/types";
 import { UI } from "../lib/UI";
 import { AuthorizationStatusBar } from "./AuthorizationStatusBar";
 
 export class ObjIdConfigMonitor implements Disposable {
-    private static _instance: ObjIdConfigMonitor;
-
-    public static get instance() {
-        if (!this._instance) {
-            throw new Error("You must not access ObjIdConfigMonitor.instance before it has been instantiated.");
-        }
-        return this._instance;
-    }
-
-    private _repos: { uri: Uri, manifest: AppManifest }[] = [];
+    private _repos: { uri: Uri; manifest: AppManifest }[] = [];
     private _workspaceFoldersChangeEvent: Disposable;
     private _watchers: Disposable[] = [];
     private _disposed: boolean = false;
@@ -30,7 +21,9 @@ export class ObjIdConfigMonitor implements Disposable {
 
     public constructor() {
         this.setUpWatchers();
-        this._workspaceFoldersChangeEvent = workspace.onDidChangeWorkspaceFolders(this.onDidChangeWorkspaceFolders.bind(this));
+        this._workspaceFoldersChangeEvent = workspace.onDidChangeWorkspaceFolders(
+            this.onDidChangeWorkspaceFolders.bind(this)
+        );
     }
 
     private onDidChangeWorkspaceFolders() {
@@ -48,19 +41,27 @@ export class ObjIdConfigMonitor implements Disposable {
         this.clearBranchTimeout();
         const promises: Promise<string>[] = [];
         for (let repo of this._repos) {
-            promises.push(((repo) => {
-                const promise = Git.instance.getCurrentBranchName(repo.uri);
-                promise.then(branch => this._currentBranches[repo.manifest.id] = branch);
-                return promise;
-            })(repo));
+            promises.push(
+                (repo => {
+                    const promise = Git.instance.getCurrentBranchName(repo.uri);
+                    promise.then(branch => (this._currentBranches[repo.manifest.id] = branch));
+                    return promise;
+                })(repo)
+            );
         }
         await Promise.all(promises);
         this._timeout = setTimeout(() => this.checkCurrentBranches(), 10000);
     }
 
+    private validateFile(manifest: AppManifest) {
+        manifest.ninja.config.idRanges; // This reads them, and reading validates them
+        manifest.ninja.config.validateObjectRanges();
+        manifest.ninja.config.bcLicense; // This reads them, and reading validates them
+    }
+
     private async onDeleted(manifest: AppManifest, uri: Uri) {
         const currentBranch = this._currentBranches[manifest.id];
-        const { authKey } = ObjIdConfig.instance(uri);
+        const { authKey } = manifest.ninja.config;
         const info = await Backend.getAuthInfo(manifest.id, authKey);
         if (!info?.authorized) {
             return;
@@ -68,22 +69,32 @@ export class ObjIdConfigMonitor implements Disposable {
 
         let branch = await Git.instance.getCurrentBranchName(uri);
         if (branch !== currentBranch) {
-            if (await UI.authorization.showUnauthorizedBranch(branch, manifest) === LABELS.BUTTON_LEARN_MORE) {
-                authorization.showAuthorizationBranchChangeDoc();
+            if (
+                (await UI.authorization.showUnauthorizedBranch(branch, manifest)) ===
+                LABELS.BUTTON_LEARN_MORE
+            ) {
+                showDocument(DOCUMENTS.AUTHORIZATION_BRANCH_CHANGE);
             }
             return;
         }
 
         Telemetry.instance.log("critical.objIdConfigDeleted", manifest.id);
-        if (await UI.authorization.showDeletedAuthorization(manifest) === LABELS.BUTTON_LEARN_MORE) {
-            authorization.showAuthorizationDeletedDoc();
+        if (
+            (await UI.authorization.showDeletedAuthorization(manifest)) === LABELS.BUTTON_LEARN_MORE
+        ) {
+            showDocument(DOCUMENTS.AUTHORIZATION_DELETED);
         }
+    }
+
+    private async onDidChange(manifest: AppManifest, uri: Uri) {
+        this.validateFile(manifest);
+        AuthorizationStatusBar.instance.updateStatusBar();
     }
 
     private async setUpWatcher(manifest: AppManifest, uri: Uri) {
         const watcher = workspace.createFileSystemWatcher(path.join(uri.fsPath, ".objidconfig"));
         watcher.onDidDelete(() => this.onDeleted(manifest, uri));
-        watcher.onDidChange(() => AuthorizationStatusBar.instance.updateStatusBar());
+        watcher.onDidChange(() => this.onDidChange(manifest, uri));
         this._watchers.push(watcher);
 
         const gitRoot = await Git.instance.getTopLevelPath(uri);
@@ -93,6 +104,7 @@ export class ObjIdConfigMonitor implements Disposable {
             this._currentBranches[manifest.id] = await Git.instance.getCurrentBranchName(uri);
         });
         this._watchers.push(gitWatcher);
+        this.validateFile(manifest);
     }
 
     private setUpWatchers() {

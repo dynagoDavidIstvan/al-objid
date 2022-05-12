@@ -1,15 +1,14 @@
-import { NotificationsFromLog } from './NotificationsFromLog';
+import { NotificationsFromLog } from "./NotificationsFromLog";
 import { Disposable, workspace } from "vscode";
 import { ALWorkspace } from "../lib/ALWorkspace";
 import { getManifest } from "../lib/AppManifest";
-import { ObjIdConfig } from "../lib/ObjIdConfig";
 import { Backend } from "../lib/Backend";
 import { PropertyBag } from "../lib/PropertyBag";
 import { FolderAuthorization } from "../lib/BackendTypes";
 import { ConsumptionCache } from "./ConsumptionCache";
-import { NewsHandler } from './NewsHandler';
-import { output } from './Output';
-import { ExplorerTreeDataProvider } from './Explorer/ExplorerTreeDataProvider';
+import { NewsHandler } from "./NewsHandler";
+import { output } from "./Output";
+import { RangeExplorerTreeDataProvider } from "./RangeExplorer/RangeExplorerTreeDataProvider";
 
 const DEFAULT_POLLING_INTERVAL = 15 * 1000; // 15 seconds
 const MAX_POLLING_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -32,14 +31,16 @@ export class PollingHandler implements Disposable {
     private async check() {
         if (this._disposed) return;
 
-        let folders = workspace.workspaceFolders?.filter(folder => ALWorkspace.isALWorkspace(folder.uri));
+        let folders = workspace.workspaceFolders?.filter(folder =>
+            ALWorkspace.isALWorkspace(folder.uri)
+        );
         if (!folders) return;
 
         let payload: FolderAuthorization[] = [];
         for (let folder of folders) {
             let manifest = getManifest(folder.uri)!;
             this._appName[manifest.id] = manifest.name;
-            let { authKey } = ObjIdConfig.instance(folder.uri);
+            let { authKey } = manifest.ninja.config;
             payload.push({ appId: manifest.id, authKey });
         }
 
@@ -47,7 +48,7 @@ export class PollingHandler implements Disposable {
         if (!updates) {
             this.backOff();
             return;
-        };
+        }
 
         const { _news, ...apps } = updates;
 
@@ -70,8 +71,9 @@ export class PollingHandler implements Disposable {
             this._pollingInterval = DEFAULT_POLLING_INTERVAL;
         }
 
+        // TODO Drop imperative consumption updates and replace them with events
         if (consumptionUpdates) {
-            ExplorerTreeDataProvider.instance.refresh();
+            RangeExplorerTreeDataProvider.instance.refresh();
         }
     }
 
@@ -91,9 +93,10 @@ export class PollingHandler implements Disposable {
         this._timeout = setTimeout(async () => {
             try {
                 await this.check();
-            }
-            catch (e: any) {
-                output.log(`An error occurred while executing polling check handler: ${e?.message || e}`)
+            } catch (e: any) {
+                output.log(
+                    `An error occurred while executing polling check handler: ${e?.message || e}`
+                );
             }
 
             this.scheduleNext();

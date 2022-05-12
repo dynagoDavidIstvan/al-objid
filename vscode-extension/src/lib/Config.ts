@@ -14,11 +14,13 @@ export class Config extends DisposableHolder {
     private constructor() {
         super();
         this._config = workspace.getConfiguration(CONFIG_SECTION);
-        this.registerDisposable(workspace.onDidChangeConfiguration((event) => {
-            if (event.affectsConfiguration(CONFIG_SECTION)) {
-                this._config = workspace.getConfiguration(CONFIG_SECTION);
-            }
-        }));
+        this.registerDisposable(
+            workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration(CONFIG_SECTION)) {
+                    this._config = workspace.getConfiguration(CONFIG_SECTION);
+                }
+            })
+        );
     }
 
     public static get instance(): Config {
@@ -52,8 +54,10 @@ export class Config extends DisposableHolder {
     }
 
     public get isBackEndConfigInError(): boolean {
-        return (this.backEndUrl === DEFAULT_HOST_NAME && this.backEndUrlPoll !== POLL_HOST_NAME) ||
-            (this.backEndUrl !== DEFAULT_HOST_NAME && this.backEndUrlPoll === POLL_HOST_NAME);
+        return (
+            (this.backEndUrl === DEFAULT_HOST_NAME && this.backEndUrlPoll !== POLL_HOST_NAME) ||
+            (this.backEndUrl !== DEFAULT_HOST_NAME && this.backEndUrlPoll === POLL_HOST_NAME)
+        );
     }
 
     public get showEventLogNotifications(): boolean {
@@ -62,6 +66,10 @@ export class Config extends DisposableHolder {
 
     public get userName(): string {
         return this._config.get<string>("overrideUserName") || User.username;
+    }
+
+    public get includeUserName(): boolean {
+        return this.getWithDefault<boolean>("includeUserName", true);
     }
 
     public get useVerboseOutputLogging(): boolean {
