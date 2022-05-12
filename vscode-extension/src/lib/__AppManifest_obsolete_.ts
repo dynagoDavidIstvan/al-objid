@@ -1,20 +1,20 @@
 import { Uri, workspace } from "vscode";
-import { AppIdCache } from "./AppIdCache";
+import { __AppIdCache_obsolete_ } from "./__AppIdCache_obsolete_";
 import path = require("path");
 import * as fs from "fs";
-import { ALRange, AppManifest } from "./types";
+import { ALRange, __AppManifest_obsolete_ } from "./types";
 import { PropertyBag } from "./PropertyBag";
-import { ObjIdConfig } from "./ObjIdConfig";
+import { __ObjIdConfig_obsolete_ } from "./__ObjIdConfig_obsolete_";
 
 const encryptionKeys: PropertyBag<string> = {};
-const manifestMap: PropertyBag<AppManifest> = {};
-const uriMap: WeakMap<Uri, AppManifest> = new WeakMap();
+const manifestMap: PropertyBag<__AppManifest_obsolete_> = {};
+const uriMap: WeakMap<Uri, __AppManifest_obsolete_> = new WeakMap();
 
-interface AppManifestBackwardCompatibility extends AppManifest {
+interface AppManifestBackwardCompatibility extends __AppManifest_obsolete_ {
     idRange: ALRange;
 }
 
-export function getManifest(uri: Uri): AppManifest | null {
+export function getManifest(uri: Uri): __AppManifest_obsolete_ | null {
     const folder = workspace.getWorkspaceFolder(uri);
     if (!folder) return null;
 
@@ -29,11 +29,11 @@ export function getManifest(uri: Uri): AppManifest | null {
             unsafeOriginalId: manifest.id,
             uri: folderUri,
             path: appPath,
-            config: ObjIdConfig.instance(folderUri, manifest.name),
+            config: __ObjIdConfig_obsolete_.instance(folderUri, manifest.name),
         };
-        manifest.id = AppIdCache.instance.getAppIdHash(manifest.ninja.unsafeOriginalId);
+        manifest.id = __AppIdCache_obsolete_.instance.getAppIdHash(manifest.ninja.unsafeOriginalId);
 
-        const encryptionKey = AppIdCache.instance.getAppIdHash(
+        const encryptionKey = __AppIdCache_obsolete_.instance.getAppIdHash(
             manifest.ninja.unsafeOriginalId.replace("-", "")
         );
 
@@ -72,7 +72,7 @@ function setAppEncryptionKey(appId: string, key: string) {
  * @param uri URI for which manifest is to be returned
  * @returns AppManifest for the URI
  */
-export function getCachedManifestFromUri(uri: Uri): AppManifest {
+export function getCachedManifestFromUri(uri: Uri): __AppManifest_obsolete_ {
     return uriMap.get(uri)!;
 }
 
@@ -80,11 +80,11 @@ export function getAppEncryptionKey(appId: string): string {
     return encryptionKeys[appId];
 }
 
-export function getCachedManifestFromAppId(appId: string): AppManifest {
+export function getCachedManifestFromAppId(appId: string): __AppManifest_obsolete_ {
     return manifestMap[appId];
 }
 
-export function getAppNamesFromManifests(manifests: AppManifest[]): string {
+export function getAppNamesFromManifests(manifests: __AppManifest_obsolete_[]): string {
     switch (manifests.length) {
         case 1:
             return manifests[0].name;
