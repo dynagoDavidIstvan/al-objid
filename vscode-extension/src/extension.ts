@@ -21,7 +21,6 @@ import { ExplorerDecorationsProvider } from "./features/RangeExplorer/ExplorerDe
 import { ConsumptionWarnings } from "./features/ConsumptionWarnings";
 import { Telemetry } from "./lib/Telemetry";
 import { ParserConnector } from "./features/ParserConnector";
-import { ObjIdConfigMonitor } from "./features/ObjIdConfigMonitor";
 import { copyRanges } from "./commands/copy-ranges";
 import { consolidateRanges } from "./commands/consolidate-ranges";
 import { createAppPool } from "./commands/create-app-pool";
@@ -32,6 +31,10 @@ import { selectBCLicense } from "./commands/select-bclicense";
 import { quickFixRemoveDeclaration } from "./commands/quickfix-remove-declaration";
 import { quickFixSelectValidType } from "./commands/quickfix-select-valid-type";
 import { ConsumptionCache } from "./features/ConsumptionCache";
+import { WorkspaceManager } from "./features/WorkspaceManager";
+import { TreeViews } from "./features/Explorer/TreeViews";
+import { expandAllRangeExplorer } from "./commands/expand-all-rangeExplorer";
+import { collapseAllRangeExplorer } from "./commands/collapse-all-rangeExplorer";
 
 export function activate(context: ExtensionContext) {
     ConsumptionWarnings.instance.setContext(context);
@@ -56,34 +59,29 @@ export function activate(context: ExtensionContext) {
         commands.registerCommand("vjeko-al-objid.sync-object-ids", syncObjectIds),
         commands.registerCommand("vjeko-al-objid.authorize-app", authorizeApp),
         commands.registerCommand("vjeko-al-objid.deauthorize-app", deauthorizeApp),
-        commands.registerCommand(
-            "vjeko-al-objid.quickfix-remove-declaration",
-            quickFixRemoveDeclaration
-        ),
-        commands.registerCommand(
-            "vjeko-al-objid.quickfix-select-valid-type",
-            quickFixSelectValidType
-        ),
+        commands.registerCommand("vjeko-al-objid.quickfix-remove-declaration", quickFixRemoveDeclaration),
+        commands.registerCommand("vjeko-al-objid.quickfix-select-valid-type", quickFixSelectValidType),
+        commands.registerCommand("vjeko-al-objid.expand-all-rangeExplorer", expandAllRangeExplorer),
+        commands.registerCommand("vjeko-al-objid.collapse-all-rangeExplorer", collapseAllRangeExplorer),
 
         // Tree view
         RangeExplorerTreeDataProvider.instance,
-        window.registerTreeDataProvider(
-            "ninja-rangeExplorer",
-            RangeExplorerTreeDataProvider.instance
-        ),
+        TreeViews.instance.registerView("ninja-rangeExplorer", RangeExplorerTreeDataProvider.instance),
         window.registerFileDecorationProvider(ExplorerDecorationsProvider.instance),
 
         // CodeActions provider
         languages.registerCodeActionsProvider("jsonc", new ObjIdConfigActionProvider()),
 
-        // Other
+        // Other VS Code features
         languages.registerCompletionItemProvider("al", new NextObjectIdCompletionProvider()),
+
+        // Other Ninja features
+        WorkspaceManager.instance,
         AuthorizationStatusBar.instance.getDisposables(),
         Output.instance.getDisposables(),
         Config.instance.getDisposables(),
         new PollingHandler(),
         new NewsHandler(context),
-        new ObjIdConfigMonitor(),
         new HttpStatusHandler(context).getDisposables(),
         ParserConnector.instance,
         Diagnostics.instance,

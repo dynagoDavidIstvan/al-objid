@@ -1,10 +1,11 @@
 import { extensions } from "vscode";
 
 export const EXTENSION_NAME = "AL Object ID Ninja";
-export const EXTENSION_VERSION =
-    extensions.getExtension("vjeko.vjeko-al-objid")?.packageJSON?.version;
+export const EXTENSION_VERSION = extensions.getExtension("vjeko.vjeko-al-objid")?.packageJSON?.version;
 
+export const APP_FILE_NAME = "app.json";
 export const CONFIG_FILE_NAME = ".objidconfig";
+export const GIT_HEAD = ".git/HEAD";
 
 export const URLS = {
     AUTHORIZATION_LEARN: "https://github.com/vjekob/al-objid/tree/master/doc/Authorization.md",
@@ -13,39 +14,6 @@ export const URLS = {
     AUTO_SYNC: "https://github.com/vjekob/al-objid/tree/master/doc/AutoSync.md",
     AUTO_SYNC_DIRTY: "https://github.com/vjekob/al-objid/tree/master/doc/AutoSyncDirty.md",
 };
-
-export const OBJECT_TYPES = [
-    "codeunit",
-    "enum",
-    "enumextension",
-    "page",
-    "pageextension",
-    "permissionset",
-    "permissionsetextension",
-    "query",
-    "report",
-    "reportextension",
-    "table",
-    "tableextension",
-    "xmlport",
-];
-
-// TODO replace the array above with the enum below (and make sure to break nothing in the proces)
-export enum ALObjectType {
-    codeunit = "codeunit",
-    enum = "enum",
-    enumextension = "enumextension",
-    page = "page",
-    pageextension = "pageextension",
-    permissionset = "permissionset",
-    permissionsetextension = "permissionsetextension",
-    query = "query",
-    report = "report",
-    reportextension = "reportextension",
-    table = "table",
-    tableextension = "tableextension",
-    xmlport = "xmlport",
-}
 
 export const LABELS = {
     BUTTON_SYNCHRONIZE: "Synchronize",
@@ -92,5 +60,16 @@ export const DOCUMENTS = {
     AUTHORIZED: "authorized",
     AUTHORIZATION_BRANCH_CHANGE: "authorization-branch-change",
     AUTHORIZATION_DELETED: "authorization-deleted",
+    AUTHORIZATION_MODIFIED: "authorization-modified",
+    APP_ID_CHANGE: "authorization-app-id-change",
     APP_POOLS: "app-pools",
+};
+
+export const TELEMETRY_HOST_NAME = "alninja-telemetry.azurewebsites.net";
+
+export const API_RESULT = {
+    NOT_SENT: Symbol("NOT_SENT"),
+    SUCCESS: Symbol("SUCCESS"),
+    ERROR_HANDLED: Symbol("ERROR_HANDLED"),
+    ERROR_NOT_HANDLED: Symbol("ERROR_NOT_HANDLED"),
 };

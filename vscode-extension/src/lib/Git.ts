@@ -1,11 +1,14 @@
+import * as path from "path";
+import * as fs from "fs";
 import { exec } from "child_process";
 import { extensions, Uri, window } from "vscode";
 import { LogLevel, output } from "../features/Output";
-import { getAppNamesFromManifests } from "./__AppManifest_obsolete_";
 import { LABELS } from "./constants";
-import { PropertyBag } from "./PropertyBag";
-import { GitCleanOperationContext, GitTopLevelPathContext } from "./types";
+import { PropertyBag } from "./types/PropertyBag";
+import { GitTopLevelPathContext } from "./types/GitTopLevelPathContext";
+import { GitCleanOperationContext } from "./types/GitCleanOperationContext";
 import { UI } from "./UI";
+import { getAppNames } from "./functions/getAppNames";
 
 /**
  * Represents a branch info with local and remote tracking info:
@@ -34,21 +37,31 @@ export class Git {
     }
     //#endregion
 
-    private async execute(
-        command: string,
-        uri: Uri,
-        split = true
-    ): Promise<string[] | string | null> {
+    private isDirectory(fsPath: string): boolean {
+        if (!fs.existsSync(fsPath)) {
+            return false;
+        }
+
+        try {
+            const isDir = fs.lstatSync(fsPath).isDirectory();
+            return isDir;
+        } catch {
+            return false;
+        }
+    }
+
+    private async execute(command: string, uri: Uri, split = true): Promise<string[] | string | null> {
+        const cwd = this.isDirectory(uri.fsPath) ? uri.fsPath : path.dirname(uri.fsPath);
         return new Promise(resolve => {
             const gitCommand = `git ${command}`;
-            output.log(`[Git] Executing command: ${gitCommand}`);
-            exec(gitCommand, { cwd: uri.fsPath, windowsHide: true }, (error, stdout) => {
+            output.log(`[Git] Executing command: ${gitCommand}`, LogLevel.Verbose);
+            exec(gitCommand, { cwd, windowsHide: true }, (error, stdout) => {
                 if (error) {
-                    output.log(`[Git] --> Error executing Git: ${error}`);
+                    output.log(`[Git] Error executing Git: ${error}`);
                     resolve(null);
                     return;
                 }
-                output.log("--> Success!", LogLevel.Verbose);
+                output.log(`[Git] Successfully executed command: ${gitCommand}`, LogLevel.Verbose);
                 if (!split) {
                     resolve(stdout);
                     return;
@@ -95,12 +108,8 @@ export class Git {
     }
 
     public async getUserInfo(uri: Uri): Promise<{ name: string; email: string }> {
-        const name = (
-            ((await this.execute("config user.name", uri, false)) as string) || ""
-        ).trim();
-        const email = (
-            ((await this.execute("config user.email", uri, false)) as string) || ""
-        ).trim();
+        const name = (((await this.execute("config user.name", uri, false)) as string) || "").trim();
+        const email = (((await this.execute("config user.email", uri, false)) as string) || "").trim();
         return {
             name,
             email,
@@ -131,8 +140,8 @@ export class Git {
     }
 
     public async getTopLevelPath(uri: Uri): Promise<string> {
-        const path = (await this.execute("rev-parse --show-toplevel", uri, false)) as string;
-        return path ? path.trim() : "";
+        const topLevelPath = (await this.execute("rev-parse --show-toplevel", uri, false)) as string;
+        return topLevelPath ? topLevelPath.trim() : "";
     }
 
     public async fetch(uri: Uri): Promise<boolean> {
@@ -202,9 +211,7 @@ export class Git {
     }
 
     public async getCurrentBranchName(uri: Uri): Promise<string> {
-        let output = (await this.execute("branch --show-current", uri, false)) as
-            | string
-            | undefined;
+        let output = (await this.execute("branch --show-current", uri, false)) as string | undefined;
         return (output && output.trim()) || "";
     }
 
@@ -213,11 +220,7 @@ export class Git {
         return !!output;
     }
 
-    public async trackRemoteBranch(
-        uri: Uri,
-        remoteBranch: string,
-        newBranch: string
-    ): Promise<boolean> {
+    public async trackRemoteBranch(uri: Uri, remoteBranch: string, newBranch: string): Promise<boolean> {
         let output = await this.execute(`branch ${newBranch} --track ${remoteBranch}`, uri, false);
         return !!output;
     }
@@ -238,47 +241,41 @@ export class Git {
 
         // First pass - require all uris to belong to clean git repos and get top-level paths
         const topLevelPaths: PropertyBag<GitTopLevelPathContext> = {};
-        for (let manifest of context.manifests) {
-            if (!(await Git.instance.isInitialized(manifest.ninja.uri))) {
-                if (
-                    (await UI.git.showNotRepoWarning(manifest, "change authorization")) ===
-                    LABELS.BUTTON_LEARN_MORE
-                ) {
-                    context.learnMore(context.manifests);
+        for (let app of context.apps) {
+            if (!(await Git.instance.isInitialized(app.uri))) {
+                if ((await UI.git.showNotRepoWarning(app, "change authorization")) === LABELS.BUTTON_LEARN_MORE) {
+                    context.learnMore(context.apps);
                 }
                 return false;
             }
 
-            if (!(await Git.instance.isClean(manifest.ninja.uri))) {
-                if (
-                    (await UI.git.showNotCleanWarning(manifest, "authorizing the app")) ===
-                    LABELS.BUTTON_LEARN_MORE
-                ) {
-                    context.learnMore(context.manifests);
+            if (!(await Git.instance.isClean(app.uri))) {
+                if ((await UI.git.showNotCleanWarning(app, "authorizing the app")) === LABELS.BUTTON_LEARN_MORE) {
+                    context.learnMore(context.apps);
                 }
                 return false;
             }
 
-            const topLevelPath = await this.getTopLevelPath(manifest.ninja.uri);
+            const topLevelPath = await this.getTopLevelPath(app.uri);
             const topLevelPathInfo =
                 topLevelPaths[topLevelPath] ||
                 (topLevelPaths[topLevelPath] = {
-                    uri: (await this.getRepositoryRootUri(manifest.ninja.uri))!,
-                    manifests: [],
+                    uri: (await this.getRepositoryRootUri(app.uri))!,
+                    apps: [],
                     branch: "",
                 });
-            topLevelPathInfo.manifests.push(manifest);
+            topLevelPathInfo.apps.push(app);
         }
 
         // Second pass - confirm branch names for top-level Git directories
         for (let key of Object.keys(topLevelPaths)) {
             const topLevelPath = topLevelPaths[key];
-            const names = getAppNamesFromManifests(topLevelPath.manifests);
+            const names = getAppNames(topLevelPath.apps);
 
             const branch = await Git.instance.getCurrentBranchName(topLevelPath.uri);
             if (!branch) {
                 if ((await UI.git.showNoCurrentBranchError(names)) === LABELS.BUTTON_LEARN_MORE) {
-                    context.learnMore(topLevelPath.manifests);
+                    context.learnMore(topLevelPath.apps);
                 }
                 return false;
             }
@@ -295,16 +292,16 @@ export class Git {
             const topLevelPath = topLevelPaths[key];
 
             let commit = false;
-            for (let manifest of topLevelPath.manifests) {
-                if (!(await context.operation(manifest))) {
+            for (let app of topLevelPath.apps) {
+                if (!(await context.operation(app))) {
                     // Operation signalled that nothing should be committed
                     continue;
                 }
 
                 // Stage files that need to be staged
-                const files = context.getFilesToStage(manifest);
+                const files = context.getFilesToStage(app);
                 for (let file of files) {
-                    await this.stageFile(manifest.ninja.uri, file);
+                    await this.stageFile(app.manifest.uri, file);
                 }
 
                 // Indicate that commit is needed for this top-level path
@@ -313,10 +310,7 @@ export class Git {
 
             // Commit files
             if (commit) {
-                await this.commit(
-                    topLevelPath.uri,
-                    context.getCommitMessage(topLevelPath.manifests)
-                );
+                await this.commit(topLevelPath.uri, context.getCommitMessage(topLevelPath.apps));
                 atLeastOneSucceeded = true;
             }
         }

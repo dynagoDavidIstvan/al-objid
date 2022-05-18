@@ -1,11 +1,12 @@
 import { ExplorerDecorationsProvider } from "./ExplorerDecorationsProvider";
-import { Disposable, EventEmitter, TreeDataProvider, TreeItem, Uri, workspace } from "vscode";
-import { ALWorkspace } from "../../lib/ALWorkspace";
-import { getCachedManifestFromUri, getManifest } from "../../lib/__AppManifest_obsolete_";
-import { ALRange } from "../../lib/types";
+import { Disposable, EventEmitter, TreeItem, Uri, workspace } from "vscode";
+import { ALRange } from "../../lib/types/ALRange";
 import { TextTreeItem } from "../Explorer/TextTreeItem";
 import { INinjaTreeItem, NinjaTreeItem } from "../Explorer/NinjaTreeItem";
 import { getFolderTreeItemProvider } from "./TreeItemProviders";
+import { WorkspaceManager } from "../WorkspaceManager";
+import { NinjaTreeDataProvider } from "../Explorer/NinjaTreeDataProvider";
+import { ExpandCollapseController } from "../Explorer/ExpandCollapseController";
 
 // TODO Display any "no consumption yet" (and similar) nodes grayed out
 // Also, propagate this decoration to their parents
@@ -23,7 +24,7 @@ import { getFolderTreeItemProvider } from "./TreeItemProviders";
 //                  assignment made through Ninja
 // - "Release":     releases the ID in the back end and makes it available for re-assignment
 
-export class RangeExplorerTreeDataProvider implements TreeDataProvider<INinjaTreeItem>, Disposable {
+export class RangeExplorerTreeDataProvider implements NinjaTreeDataProvider, Disposable {
     public static _instance: RangeExplorerTreeDataProvider;
 
     private constructor() {
@@ -38,6 +39,7 @@ export class RangeExplorerTreeDataProvider implements TreeDataProvider<INinjaTre
     }
 
     private _workspaceFoldersChangeEvent: Disposable;
+    private _expandCollapseController: ExpandCollapseController | undefined;
     private _watchers: Disposable[] = [];
     private _disposed: boolean = false;
 
@@ -51,59 +53,36 @@ export class RangeExplorerTreeDataProvider implements TreeDataProvider<INinjaTre
     }
 
     private setUpWatchers() {
-        let folders = ALWorkspace.getALFolders();
-        if (!folders) {
+        let apps = WorkspaceManager.instance.alApps;
+        if (apps.length === 0) {
             return;
         }
-        for (let folder of folders) {
-            const manifest = getManifest(folder.uri)!;
-
-            const watcherAppId = workspace.createFileSystemWatcher(manifest.ninja.path);
-            watcherAppId.onDidChange(e => this.refresh(e));
-            this._watchers.push(watcherAppId);
-
-            const watcherObjIdConfig = workspace.createFileSystemWatcher(
-                `${manifest.ninja.config.path}`
-            );
-            watcherObjIdConfig.onDidChange(e => this.refresh(e));
-            this._watchers.push(watcherObjIdConfig);
+        for (let app of apps) {
+            this._watchers.push(app.onManifestChanged(uri => this.refresh(uri)));
+            this._watchers.push(app.onConfigChanged(uri => this.refresh(uri)));
         }
     }
 
     getTreeItem(element: INinjaTreeItem): TreeItem | Promise<TreeItem> {
-        return element.getTreeItem();
+        return element.getTreeItem(this._expandCollapseController!);
     }
 
     getChildren(element?: INinjaTreeItem): INinjaTreeItem[] | Promise<INinjaTreeItem[]> {
         if (!element) {
-            let folders = ALWorkspace.getALFolders();
-            if (!folders) {
-                return [
-                    new TextTreeItem(
-                        "No AL workspaces are open.",
-                        "There is nothing to show here",
-                        undefined
-                    ),
-                ];
+            let apps = WorkspaceManager.instance.alApps;
+            if (apps.length === 0) {
+                return [new TextTreeItem("No AL workspaces are open.", "There is nothing to show here.", undefined)];
             }
 
-            folders = folders.filter(
-                folder => !getCachedManifestFromUri(folder.uri).ninja.config.appPoolId
-            );
-            if (!folders) {
-                return [
-                    new TextTreeItem(
-                        "Only app pools available.",
-                        "There is nothing to show here",
-                        undefined
-                    ),
-                ];
+            apps = apps.filter(app => !app.config.appPoolId);
+            if (apps.length === 0) {
+                return [new TextTreeItem("Only app pools available.", "There is nothing to show here.", undefined)];
             }
-            return folders?.map(folder => {
-                const manifest = getManifest(folder.uri)!;
+
+            return apps.map(app => {
                 const folderItem = new NinjaTreeItem(
-                    manifest,
-                    getFolderTreeItemProvider(manifest, item => {
+                    app,
+                    getFolderTreeItemProvider(app, item => {
                         this._onDidChangeTreeData.fire(item);
                     })
                 );
@@ -128,9 +107,9 @@ export class RangeExplorerTreeDataProvider implements TreeDataProvider<INinjaTre
 
     refresh(uri?: Uri) {
         if (uri) {
-            const manifest = getManifest(uri);
-            if (manifest) {
-                ExplorerDecorationsProvider.instance.releaseDecorations(manifest);
+            const app = WorkspaceManager.instance.getALAppFromUri(uri);
+            if (app) {
+                ExplorerDecorationsProvider.instance.releaseDecorations(app);
             }
         }
         this._onDidChangeTreeData.fire();
@@ -143,12 +122,20 @@ export class RangeExplorerTreeDataProvider implements TreeDataProvider<INinjaTre
         this._watchers = [];
     }
 
+    public registerExpandCollapseController(controller: ExpandCollapseController): void {
+        this._expandCollapseController = controller;
+        this._expandCollapseController.setRefresh(() => {
+            this.refresh();
+        });
+    }
+
     dispose() {
         if (this._disposed) {
             return;
         }
         this._disposed = true;
         this.disposeWatchers();
+        this._onDidChangeTreeData.dispose();
         this._workspaceFoldersChangeEvent.dispose();
     }
 }

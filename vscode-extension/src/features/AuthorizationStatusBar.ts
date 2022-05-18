@@ -1,11 +1,10 @@
 import { MarkdownString, StatusBarAlignment, StatusBarItem, window } from "vscode";
-import { ALWorkspace } from "../lib/ALWorkspace";
-import { getManifest } from "../lib/__AppManifest_obsolete_";
 import { EXTENSION_NAME, URLS } from "../lib/constants";
 import { DisposableHolder } from "./DisposableHolder";
-import { Backend } from "../lib/Backend";
-import { AuthorizedAppResponse } from "../lib/BackendTypes";
-import { __AppManifest_obsolete_ } from "../lib/types";
+import { Backend } from "../lib/backend/Backend";
+import { AuthorizedAppResponse } from "../lib/backend/AuthorizedAppResponse";
+import { WorkspaceManager } from "./WorkspaceManager";
+import { ALApp } from "../lib/ALApp";
 
 export class AuthorizationStatusBar extends DisposableHolder {
     private _status: StatusBarItem;
@@ -13,9 +12,7 @@ export class AuthorizationStatusBar extends DisposableHolder {
 
     private constructor() {
         super();
-        this.registerDisposable(
-            (this._status = window.createStatusBarItem(StatusBarAlignment.Left, 1))
-        );
+        this.registerDisposable((this._status = window.createStatusBarItem(StatusBarAlignment.Left, 1)));
         window.onDidChangeActiveTextEditor(this.updateStatusBar, this);
     }
 
@@ -43,9 +40,10 @@ export class AuthorizationStatusBar extends DisposableHolder {
             : "";
     }
 
-    private async readUserInfo(manifest: __AppManifest_obsolete_, authKey: string) {
+    private async readUserInfo(app: ALApp, authKey: string) {
         const authorized = !!authKey;
-        const info = await Backend.getAuthInfo(manifest.id, authKey);
+        // TODO Use app.config.isValid rather than accessing back end again
+        const info = await Backend.getAuthInfo(app, authKey);
         if (info) {
             if (info.authorized === authorized) {
                 if (!info.valid && info.authorized) {
@@ -55,7 +53,7 @@ export class AuthorizationStatusBar extends DisposableHolder {
                     );
                     return;
                 }
-                this.updateTooltip(manifest!.name, authorized, this.getUserInfoText(info));
+                this.updateTooltip(app!.name, authorized, this.getUserInfoText(info));
             } else {
                 this._status.text = `$(${authorized ? "warning" : "error"}) Invalid authorization`;
                 this._status.tooltip = new MarkdownString(
@@ -64,9 +62,7 @@ export class AuthorizationStatusBar extends DisposableHolder {
                             ? "You have authorization file (`.objidconfig`) but the app is not authorized."
                             : "You have no authorization file (`.objidconfig`), but the app is authorized."
                     } Try to pull latest changes from your Git.${
-                        info && info.user
-                            ? `\n\nThis app was last authorized by ${this.getUserInfoText(info)}`
-                            : ""
+                        info && info.user ? `\n\nThis app was last authorized by ${this.getUserInfoText(info)}` : ""
                     }`
                 );
             }
@@ -75,21 +71,19 @@ export class AuthorizationStatusBar extends DisposableHolder {
 
     public updateStatusBar() {
         let document = window.activeTextEditor?.document;
-        if (!document || !ALWorkspace.isALWorkspace(document.uri)) {
+        if (!document || !WorkspaceManager.instance.isALUri(document.uri)) {
             this._status.hide();
             return;
         }
 
-        let manifest = getManifest(document.uri)!;
-        let authKey = manifest?.ninja.config?.authKey;
+        let manifest = WorkspaceManager.instance.getALAppFromUri(document.uri)!;
+        let authKey = manifest?.config.authKey;
 
         if (manifest) {
             this.readUserInfo(manifest, authKey);
         }
 
-        this._status.text = `$(${authKey ? "lock" : "unlock"}) ${
-            authKey ? "Authorized" : "Unauthorized"
-        }`;
+        this._status.text = `$(${authKey ? "lock" : "unlock"}) ${authKey ? "Authorized" : "Unauthorized"}`;
         this._status.command = authKey ? undefined : "vjeko-al-objid.confirm-authorize-app";
         this.updateTooltip(manifest!.name, !!authKey, "");
         this._status.show();

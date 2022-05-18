@@ -10,18 +10,19 @@ import {
     workspace,
     WorkspaceEdit,
 } from "vscode";
-import { Backend } from "../lib/Backend";
-import { __AppManifest_obsolete_, NinjaALRange } from "../lib/types";
+import { Backend } from "../lib/backend/Backend";
+import { NinjaALRange } from "../lib/types/NinjaALRange";
 import { LogLevel, output } from "./Output";
-import { NextObjectIdInfo } from "../lib/BackendTypes";
+import { NextObjectIdInfo } from "../lib/types/NextObjectIdInfo";
 import { Telemetry } from "../lib/Telemetry";
 import { NextIdContext } from "./ParserConnector";
-import { showDocument } from "../lib/functions";
+import { showDocument } from "../lib/functions/showDocument";
 import { UI } from "../lib/UI";
 import { DOCUMENTS, LABELS } from "../lib/constants";
 import { syncIfChosen } from "./NextObjectIdCompletionProvider";
+import { ALApp } from "../lib/ALApp";
 
-export type CommitNextObjectId = (manifest: __AppManifest_obsolete_) => Promise<NextObjectIdInfo>;
+export type CommitNextObjectId = (app: ALApp) => Promise<NextObjectIdInfo>;
 
 export class NextObjectIdCompletionItem extends CompletionItem {
     private _injectSemicolon: boolean = false;
@@ -44,63 +45,42 @@ export class NextObjectIdCompletionItem extends CompletionItem {
     constructor(
         type: string,
         objectId: NextObjectIdInfo,
-        manifest: __AppManifest_obsolete_,
+        app: ALApp,
         position: Position,
         uri: Uri,
         nextIdContext: NextIdContext,
         range?: NinjaALRange
     ) {
-        super(
-            `${objectId.id}${nextIdContext.injectSemicolon ? ";" : ""}`,
-            CompletionItemKind.Constant
-        );
+        super(`${objectId.id}${nextIdContext.injectSemicolon ? ";" : ""}`, CompletionItemKind.Constant);
 
         this._injectSemicolon = nextIdContext.injectSemicolon;
         this._range = range;
 
-        this.sortText = nextIdContext.additional
-            ? `0.${nextIdContext.additional.ordinal / 1000}`
-            : "0";
-        this.command = this.getCompletionCommand(position, uri, type, manifest, objectId);
+        this.sortText = nextIdContext.additional ? `0.${nextIdContext.additional.ordinal / 1000}` : "0";
+        this.command = this.getCompletionCommand(position, uri, type, app, objectId);
         this.documentation = this.getCompletionDocumentation(type, objectId);
         this.insertText = `${objectId.id}${this._injectSemicolon ? ";" : ""}`;
         this.detail = "AL Object ID Ninja";
-        this.label =
-            range && range.description ? `${objectId.id} (${range.description})` : this.insertText;
+        this.label = range && range.description ? `${objectId.id} (${range.description})` : this.insertText;
         this.kind = CompletionItemKind.Constant;
     }
 
-    getCompletionCommand(
-        position: Position,
-        uri: Uri,
-        type: string,
-        manifest: __AppManifest_obsolete_,
-        objectId: NextObjectIdInfo
-    ): Command {
+    getCompletionCommand(position: Position, uri: Uri, type: string, app: ALApp, objectId: NextObjectIdInfo): Command {
         return {
             command: "vjeko-al-objid.commit-suggestion",
             title: "",
             arguments: [
                 async () => {
-                    output.log(
-                        `Committing object ID auto-complete for ${type} ${objectId.id}`,
-                        LogLevel.Info
-                    );
-                    const { authKey } = manifest.ninja.config;
+                    output.log(`Committing object ID auto-complete for ${type} ${objectId.id}`, LogLevel.Info);
                     const realId = await Backend.getNextNo(
-                        manifest.id,
+                        app,
                         type,
-                        manifest.idRanges,
+                        app.manifest.idRanges,
                         true,
-                        authKey,
                         objectId.id as number
                     );
                     const notChanged = !realId || this.isIdEqual(realId.id, objectId.id as number);
-                    Telemetry.instance.log(
-                        "getNextNo-commit",
-                        manifest.id,
-                        notChanged ? undefined : "different"
-                    );
+                    Telemetry.instance.log("getNextNo-commit", app.hash, notChanged ? undefined : "different");
                     if (notChanged) {
                         return;
                     }
@@ -112,15 +92,13 @@ export class NextObjectIdCompletionItem extends CompletionItem {
                     let replacement = `${realId.id}`;
                     if (!realId.available) {
                         if (this._range) {
-                            UI.nextId
-                                .showNoMoreInLogicalRangeWarning(this._range.description)
-                                .then(result => {
-                                    if (result === LABELS.BUTTON_LEARN_MORE) {
-                                        showDocument(DOCUMENTS.LOGICAL_RANGES);
-                                    }
-                                });
+                            UI.nextId.showNoMoreInLogicalRangeWarning(this._range.description).then(result => {
+                                if (result === LABELS.BUTTON_LEARN_MORE) {
+                                    showDocument(DOCUMENTS.LOGICAL_RANGES);
+                                }
+                            });
                         } else {
-                            syncIfChosen(manifest, UI.nextId.showNoMoreNumbersWarning());
+                            syncIfChosen(app, UI.nextId.showNoMoreNumbersWarning());
                         }
                         replacement = "";
                     }
@@ -128,10 +106,7 @@ export class NextObjectIdCompletionItem extends CompletionItem {
                     let replace = new WorkspaceEdit();
                     replace.set(uri, [
                         TextEdit.replace(
-                            new Range(
-                                position,
-                                position.translate(0, objectId.id.toString().length)
-                            ),
+                            new Range(position, position.translate(0, objectId.id.toString().length)),
                             replacement
                         ),
                     ]);
@@ -162,9 +137,7 @@ export class NextObjectIdCompletionItem extends CompletionItem {
     }
 
     getCompletionDocumentation(type: string, objectId: NextObjectIdInfo): MarkdownString {
-        const firstLine = `Assigns the next available ${this.nextIdDescription(
-            type
-        )} from the Azure back end.`;
+        const firstLine = `Assigns the next available ${this.nextIdDescription(type)} from the Azure back end.`;
         let typeDesc = `${type} ${objectId.id}`;
         if (type.startsWith("table_")) {
             typeDesc = `field(${objectId.id}; ...)`;

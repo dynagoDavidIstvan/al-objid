@@ -1,7 +1,7 @@
-import { EventLogEntry } from "../lib/BackendTypes";
+import { EventLogEntry } from "../lib/types/EventLogEntry";
 import { Config } from "../lib/Config";
-import { decrypt } from "../lib/Encryption";
 import { UI } from "../lib/UI";
+import { WorkspaceManager } from "./WorkspaceManager";
 
 export class NotificationsFromLog {
     //#region Singleton
@@ -40,7 +40,8 @@ export class NotificationsFromLog {
             }
 
             if (event.user) {
-                event.user = decrypt(event.user, appId) || "Unknown user";
+                const app = WorkspaceManager.instance.getALAppFromHash(appId);
+                event.user = app?.decrypt(event.user) || "Unknown user";
                 if (event.user === Config.instance.userName) {
                     continue;
                 }

@@ -1,7 +1,7 @@
-import { PropertyBag } from "./PropertyBag";
+import { PropertyBag } from "./types/PropertyBag";
 import { ExtensionContext } from "vscode";
-import { getSha256 } from "./Sha256";
-import { Backend } from "./Backend";
+import { getSha256 } from "./functions/getSha256";
+import { Backend } from "./backend/Backend";
 import { EXTENSION_VERSION } from "./constants";
 
 const TELEMETRY_USER_SHA = "telemetry.userSha";
@@ -43,9 +43,7 @@ export class Telemetry {
 
     private getAppSha(appId: string): string {
         if (!this._appSha[appId]) {
-            this._appSha[appId] = this._context!.globalState.get<string>(
-                this.getAppShaGlobalStateKey(appId)
-            );
+            this._appSha[appId] = this._context!.globalState.get<string>(this.getAppShaGlobalStateKey(appId));
         }
         if (!this._appSha[appId]) {
             const now = Date.now();

@@ -1,6 +1,9 @@
 import path = require("path");
 import { commands, Disposable, env, ExtensionContext, Uri, window } from "vscode";
-import { NewsActionType, NewsButton, NewsEntry, NewsType } from "../lib/BackendTypes";
+import { NewsEntry } from "../lib/types/NewsEntry";
+import { NewsButton } from "../lib/types/NewsButton";
+import { NewsActionType } from "../lib/types/NewsActionType";
+import { NewsType } from "../lib/types/NewsType";
 
 enum NewsEntryStatus {
     shown = 0,
@@ -34,9 +37,7 @@ export class NewsHandler implements Disposable {
 
     public static get instance() {
         if (!this._instance) {
-            throw new Error(
-                "You must not access NewsHandler.instance before it has been instantiated."
-            );
+            throw new Error("You must not access NewsHandler.instance before it has been instantiated.");
         }
         return this._instance;
     }
@@ -85,8 +86,7 @@ export class NewsHandler implements Disposable {
 
     private takeAction: NewsProcessor<NewsButton> = {
         [NewsActionType.dismiss]: (entry: NewsEntry) => this.dismiss(entry),
-        [NewsActionType.url]: (entry: NewsEntry, button: NewsButton) =>
-            this.navigateToUrl(entry, button),
+        [NewsActionType.url]: (entry: NewsEntry, button: NewsButton) => this.navigateToUrl(entry, button),
         [NewsActionType.snooze]: (entry: NewsEntry, button: NewsButton) =>
             this.snooze(entry, button.parameter * 1000 * 60),
     };
@@ -94,10 +94,7 @@ export class NewsHandler implements Disposable {
     private processNewsEntry(entry: NewsEntry): boolean {
         let processFunc = this.process[entry.type];
         const keys = this._context.globalState.keys();
-        if (
-            typeof processFunc !== "function" ||
-            this._context.globalState.get(statusKey(entry.id)) !== undefined
-        ) {
+        if (typeof processFunc !== "function" || this._context.globalState.get(statusKey(entry.id)) !== undefined) {
             return false;
         }
         if (!this._firstRun && ONLY_ON_FIRST_RUN.includes(entry.type)) {
