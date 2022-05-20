@@ -214,36 +214,14 @@ export const UI = {
             window.showInformationMessage(
                 `Logical ranges for ${describeApp(app)} are now consolidated in .objidconfig.`
             ),
-        showInvalidRangeFromToError: (name: string, range: NinjaALRange) =>
+        showInvalidRangeFromToError: (range: NinjaALRange) =>
             window.showErrorMessage(
                 `Range ${
                     range.description
                         ? `${range.description} (${range.from}..${range.to})`
                         : `${range.from}..${range.to}`
-                } in ${name} has "to" lower than "from". "from" must be lower, and "to" must be higher.`,
+                } has "to" lower than "from". "from" must be lower, and "to" must be higher.`,
                 LABELS.FIX
-            ),
-        showInvalidRangeTypeError: (name: string, range: NinjaALRange) =>
-            window.showErrorMessage(
-                `Logical range ${
-                    range.description
-                        ? `${range.description} (${range.from}..${range.to})`
-                        : `${range.from}..${range.to}`
-                } in ${name} is invalid. Both "from" and "to" must be non-zero numbers.`,
-                "OK"
-            ),
-        showRangeOverlapError: (name: string, range1: NinjaALRange, range2: NinjaALRange) =>
-            window.showErrorMessage(
-                `Ranges logical ranges ${
-                    range1.description
-                        ? `${range1.description} (${range1.from}..${range1.to})`
-                        : `${range1.from}..${range1.to}`
-                } and ${
-                    range2.description
-                        ? `${range2.description} (${range2.from}..${range2.to})`
-                        : `${range2.from}..${range2.to}`
-                } in ${name} overlap. Until you fix this issue, your logical range configuration in .objidconfig will be ignored.`,
-                "OK"
             ),
     },
 

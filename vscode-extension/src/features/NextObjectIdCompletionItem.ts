@@ -21,6 +21,7 @@ import { UI } from "../lib/UI";
 import { DOCUMENTS, LABELS } from "../lib/constants";
 import { syncIfChosen } from "./NextObjectIdCompletionProvider";
 import { ALApp } from "../lib/ALApp";
+import { NinjaCommand } from "../commands/commands";
 
 export type CommitNextObjectId = (app: ALApp) => Promise<NextObjectIdInfo>;
 
@@ -67,10 +68,11 @@ export class NextObjectIdCompletionItem extends CompletionItem {
 
     getCompletionCommand(position: Position, uri: Uri, type: string, app: ALApp, objectId: NextObjectIdInfo): Command {
         return {
-            command: "vjeko-al-objid.commit-suggestion",
+            command: NinjaCommand.CommitSuggestion,
             title: "",
             arguments: [
                 async () => {
+                    //TODO Assigning from public range (1..50000) for enum values results in "No more objects..." error
                     output.log(`Committing object ID auto-complete for ${type} ${objectId.id}`, LogLevel.Info);
                     const realId = await Backend.getNextNo(
                         app,

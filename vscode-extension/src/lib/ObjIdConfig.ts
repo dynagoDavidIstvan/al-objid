@@ -9,6 +9,7 @@ import { LogLevel, output } from "../features/Output";
 import { Backend } from "./backend/Backend";
 import { ALObjectType } from "./types/ALObjectType";
 import { BCLicense } from "./BCLicense";
+import { ObjIdConfigLinter } from "../features/linters/ObjIdConfigLinter";
 
 interface ObjIdConfigJson {
     authKey: string;
@@ -47,6 +48,9 @@ export class ObjIdConfig {
         this._backEndAppInfo = backEndAppInfo;
         this._folder = workspace.getWorkspaceFolder(uri)!;
         this._config = this.read();
+
+        const linter = new ObjIdConfigLinter(uri);
+        linter.validate();
     }
 
     private read(): ObjIdConfigJson {
@@ -130,6 +134,10 @@ export class ObjIdConfig {
         this.setProperty(ConfigurationProperty.AuthKey, value);
     }
 
+    public removeProperty(name: string) {
+        this.setProperty(name as ConfigurationProperty, undefined);
+    }
+
     public async isAuthKeyValid(): Promise<boolean> {
         if (this._authKeyValidPromise) {
             return this._authKeyValidPromise;
@@ -180,6 +188,9 @@ export class ObjIdConfig {
         const names: string[] = [];
         const ranges = this._config.idRanges;
         for (let range of ranges) {
+            if (!range || !range.description) {
+                continue;
+            }
             if (names.find(name => name.toLowerCase().trim() === range.description.toLowerCase().trim())) {
                 continue;
             }
