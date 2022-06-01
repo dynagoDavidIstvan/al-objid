@@ -5,6 +5,48 @@ All notable changes to the AL Object ID Ninja extension will be documented in th
 The log is kept in [Keep a Changelog](http://keepachangelog.com/) format. This project follows
 [Semantic Versioning](https://semver.org/).
 
+## [vNext] - 2022-06-01
+
+### Added
+
+-   "Go to definition" command added to all relevant nodes in Range explorer. This allows jumping to a range definition
+    in `app.json` or `.objidconfig` directly from range explorer.
+
+### Changed
+
+-   Range explorer as been through massive refactoring (again). The previous refactoring involved a lot of fumbling
+    around how logical and actual representations of tree items (nodes) worked. The previous solution was fully
+    functional, but extremely difficult and complicated to maintain, and was requiring far too much code duplication
+    to support any other tree views. The refactoring in this verion uses an approach that requires no duplication and
+    allows supporting new tree views through simply providing new node types.
+-   Range explorer uses new icon types and a simplified structure. Icons indicate four states (no consumption, most
+    IDs available, most IDs consumed, running out, fully consumed) but they only indicate these states through color,
+    not through icon shape. Also, there are no more "No consumption" nodes, this information is now communicated
+    through color and node state (keeps the view much more concise and easier to read).
+-   Changed icons for "Synchronize" and "Automatically synchronize" commands in Range explorer. New icons derive from
+    Codicons icon collection (a part of VS Code), that also comes with simpler license than previous icons did, and
+    follows the VS Code existing design language more closely.
+
+### Fixed
+
+-   Tree view does not reset its expand/collapse state after changes in workspace or consumption state. Previously,
+    if, for example, consumption changes while the tree view is collapsed, it would automatically expand all when
+    refreshing. Now, tree state is retained when updating tree.
+-   Diagnostics don't update after all content removed. ([Git issue #35](https://github.com/vjekob/al-objid/issues/35))
+
+## [2.8.1] - 2022-05-28
+
+### Fixed
+
+-   Fixes issues with `package.json` and `CHANGELOG.md` (version 2.8.0 published accidentally instead of 2.7.1).
+
+## [2.8.0] - 2022-05-28
+
+### Fixed
+
+-   Ninja can now read `app.json` files saved in [`UTF-8 with BOM` file format](https://en.wikipedia.org/wiki/Byte_order_mark#UTF-8).
+    ([Git issue #36](https://github.com/vjekob/al-objid/issues/36))
+
 ## [2.7.0] - 2022-05-19
 
 ### Added

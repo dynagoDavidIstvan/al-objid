@@ -3,7 +3,7 @@
     "displayName": "AL Object ID Ninja",
     "description": "Manage object IDs in multi-user environments with mind-boggling simplicity.",
     "publisher": "vjeko",
-    "version": "2.7.0",
+    "version": "2.8.1",
     "repository": {
         "type": "git",
         "url": "https://github.com/vjekob/al-objid.git"
@@ -69,10 +69,7 @@
                 "command": "vjeko-al-objid.confirm-sync-object-ids",
                 "category": "Ninja",
                 "title": "Synchronize Object IDs with Azure Back End",
-                "icon": {
-                    "dark": "images/share-dark.svg",
-                    "light": "images/share-light.svg"
-                }
+                "icon": "$(cloud-upload)"
             },
             {
                 "command": "vjeko-al-objid.confirm-authorize-app",
@@ -101,11 +98,13 @@
             {
                 "command": "vjeko-al-objid.copy-ranges",
                 "category": "Ninja",
+                "icon": "$(copy)",
                 "title": "Copy ranges from app.json to .objidconfig"
             },
             {
                 "command": "vjeko-al-objid.consolidate-ranges",
                 "category": "Ninja",
+                "icon": "$(wand)",
                 "title": "Consolidate logical ranges"
             },
             {
@@ -134,6 +133,12 @@
                 "category": "Ninja",
                 "title": "Collapse all",
                 "icon": "$(collapse-all)"
+            },
+            {
+                "command": "vjeko-al-objid.goto-definition",
+                "category": "Ninja",
+                "title": "Go to definition",
+                "icon": "$(go-to-file)"
             }
         ],
         "configuration": {
@@ -249,7 +254,22 @@
                 {
                     "command": "vjeko-al-objid.confirm-sync-object-ids",
                     "group": "inline",
-                    "when": "view == ninja-rangeExplorer && viewItem == ninja-folder"
+                    "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-sync,/"
+                },
+                {
+                    "command": "vjeko-al-objid.goto-definition",
+                    "group": "inline",
+                    "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-goto-def,/"
+                },
+                {
+                    "command": "vjeko-al-objid.consolidate-ranges",
+                    "group": "inline",
+                    "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-consolidate-ranges,/"
+                },
+                {
+                    "command": "vjeko-al-objid.copy-ranges",
+                    "group": "inline",
+                    "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-copy-ranges,/"
                 }
             ],
             "explorer/context": [
@@ -291,6 +311,18 @@
                 },
                 {
                     "command": "vjeko-al-objid.validate-bclicense"
+                },
+                {
+                    "command": "vjeko-al-objid.expand-all-rangeExplorer",
+                    "when": "false"
+                },
+                {
+                    "command": "vjeko-al-objid.collapse-all-rangeExplorer",
+                    "when": "false"
+                },
+                {
+                    "command": "vjeko-al-objid.goto-definition",
+                    "when": "false"
                 }
             ]
         }

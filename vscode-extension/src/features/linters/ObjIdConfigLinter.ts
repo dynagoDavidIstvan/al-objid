@@ -9,6 +9,8 @@ import { ALRange } from "../../lib/types/ALRange";
 import { CreateDiagnostic, Diagnostics, DIAGNOSTIC_CODE } from "../Diagnostics";
 import { jsonAvailable } from "./jsonAvailable";
 
+// TODO Warn on logical ranges not covered by physical ranges
+
 export class ObjIdConfigLinter {
     private readonly _uri: Uri;
     private readonly _symbolsPromise: Promise<DocumentSymbol[] | undefined>;
@@ -330,6 +332,7 @@ export class ObjIdConfigLinter {
     //#endregion
 
     public validate() {
+        Diagnostics.instance.resetForUri(this._uri);
         this.validateProperties();
         this.validateIdRanges();
         this.validateObjectTypes();

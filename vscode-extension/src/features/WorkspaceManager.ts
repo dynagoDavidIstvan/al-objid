@@ -1,13 +1,16 @@
-import { Disposable, Uri, window, workspace, WorkspaceFolder, WorkspaceFoldersChangeEvent } from "vscode";
+import { Disposable, EventEmitter, Uri, window, workspace, WorkspaceFolder, WorkspaceFoldersChangeEvent } from "vscode";
 import { ALApp } from "../lib/ALApp";
 import { PropertyBag } from "../lib/types/PropertyBag";
 import { QuickPickWrapper } from "../lib/QuickPickWrapper";
 import { UI } from "../lib/UI";
+import { ALFoldersChangedEvent } from "../lib/types/ALFoldersChangedEvent";
 
 export class WorkspaceManager implements Disposable {
     private static _instance: WorkspaceManager;
     private readonly _appMap: PropertyBag<ALApp> = {};
     private readonly _appHashMap: PropertyBag<ALApp> = {};
+    private readonly _onDidChangeALFolders = new EventEmitter<ALFoldersChangedEvent>();
+    public readonly onDidChangeALFolders = this._onDidChangeALFolders.event;
     private _apps: ALApp[] = [];
     private _folders: WorkspaceFolder[] = [];
     private _disposed = false;
@@ -26,12 +29,13 @@ export class WorkspaceManager implements Disposable {
 
     private onDidChangeWorkspaceFolders({ added, removed }: WorkspaceFoldersChangeEvent) {
         // Remove any ALApp instances that are no longer in workspace
+        const alRemoved: ALApp[] = [];
         this._apps = this._apps.filter(app => {
             const stillExists = !removed.find(folder => app.isFolder(folder));
             if (!stillExists) {
+                alRemoved.push(app);
                 delete this._appMap[app.uri.fsPath];
                 delete this._appHashMap[app.hash];
-                app.dispose();
             }
             return stillExists;
         });
@@ -40,10 +44,21 @@ export class WorkspaceManager implements Disposable {
         );
 
         // Add any folders that are added to the workspace
-        this.addFoldersToWatch(added as WorkspaceFolder[]);
+        const alAdded: ALApp[] = [];
+        this.addFoldersToWatch(added as WorkspaceFolder[], alAdded);
+
+        // Fire the event with any AL Apps added or removed
+        if (alRemoved.length || alAdded.length) {
+            this._onDidChangeALFolders.fire({ added: alAdded, removed: alRemoved });
+        }
+
+        // Dispose of removed apps
+        for (let app of alRemoved) {
+            app.dispose();
+        }
     }
 
-    private addFoldersToWatch(folders: WorkspaceFolder[]) {
+    private addFoldersToWatch(folders: WorkspaceFolder[], addedApps?: ALApp[]) {
         for (let folder of folders) {
             const app = ALApp.tryCreate(folder);
             if (!app) {
@@ -52,6 +67,7 @@ export class WorkspaceManager implements Disposable {
             this._apps.push(app);
             this._appMap[app.uri.fsPath] = app;
             this._appHashMap[app.hash] = app;
+            addedApps?.push(app);
         }
         this._folders.push(...folders);
     }

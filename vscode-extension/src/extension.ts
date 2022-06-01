@@ -1,4 +1,4 @@
-import { ExtensionContext, languages, window } from "vscode";
+import { ExtensionContext, languages } from "vscode";
 import { NewsHandler } from "./features/NewsHandler";
 import { AuthorizationStatusBar } from "./features/AuthorizationStatusBar";
 import { PollingHandler } from "./features/PollingHandler";
@@ -7,17 +7,15 @@ import { Output } from "./features/Output";
 import { Config } from "./lib/Config";
 import { HttpStatusHandler } from "./features/HttpStatusHandler";
 import { ReleaseNotesHandler } from "./features/ReleaseNotesHandler";
-import { RangeExplorerTreeDataProvider } from "./features/RangeExplorer/RangeExplorerTreeDataProvider";
-import { ExplorerDecorationsProvider } from "./features/RangeExplorer/ExplorerDecorationsProvider";
-import { ConsumptionWarnings } from "./features/ConsumptionWarnings";
 import { Telemetry } from "./lib/Telemetry";
 import { ParserConnector } from "./features/ParserConnector";
 import { Diagnostics } from "./features/Diagnostics";
 import { ObjIdConfigActionProvider } from "./features/ObjIdConfigCodeActionProvider";
 import { ConsumptionCache } from "./features/ConsumptionCache";
 import { WorkspaceManager } from "./features/WorkspaceManager";
-import { TreeViews } from "./features/Explorer/TreeViews";
 import { registerCommands } from "./commands/commands";
+import { ConsumptionWarnings } from "./features/ConsumptionWarnings";
+import { RangeExplorerView } from "./features/treeView/rangeExplorer/RangeExplorerView";
 
 export function activate(context: ExtensionContext) {
     ConsumptionWarnings.instance.setContext(context);
@@ -26,10 +24,8 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         ...registerCommands(),
 
-        // Tree view
-        RangeExplorerTreeDataProvider.instance,
-        TreeViews.instance.registerView("ninja-rangeExplorer", RangeExplorerTreeDataProvider.instance),
-        window.registerFileDecorationProvider(ExplorerDecorationsProvider.instance),
+        // Tree views
+        new RangeExplorerView("ninja-rangeExplorer"),
 
         // CodeActions provider
         languages.registerCodeActionsProvider("jsonc", new ObjIdConfigActionProvider()),

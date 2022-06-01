@@ -1,6 +1,6 @@
-import { TreeViews } from "../features/Explorer/TreeViews";
+import { ExpandCollapseController } from "../features/treeView/ExpandCollapseController";
 
 export function expandAllRangeExplorer() {
-    const controller = TreeViews.instance.getExpandCollapse("ninja-rangeExplorer");
+    const controller = ExpandCollapseController.getController("ninja-rangeExplorer");
     controller?.expandAll();
 }
