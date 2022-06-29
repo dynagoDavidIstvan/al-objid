@@ -10,6 +10,7 @@ import { FileWatcher } from "./FileWatcher";
 import { ObjIdConfigWatcher } from "./ObjectIdConfigWatcher";
 import { decrypt, encrypt } from "./Encryption";
 import { BackEndAppInfo } from "./backend/BackEndAppInfo";
+import { Telemetry, TelemetryEventType } from "./Telemetry";
 
 export class ALApp implements Disposable, BackEndAppInfo {
     private readonly _uri: Uri;
@@ -18,8 +19,8 @@ export class ALApp implements Disposable, BackEndAppInfo {
     private readonly _manifestWatcher: FileWatcher;
     private readonly _manifestChanged: Disposable;
     private readonly _configWatcher: ObjIdConfigWatcher;
-    private readonly _onManifestChanged = new EventEmitter<Uri>();
-    private readonly _onConfigChanged = new EventEmitter<Uri>();
+    private readonly _onManifestChanged = new EventEmitter<ALApp>();
+    private readonly _onConfigChanged = new EventEmitter<ALApp>();
     public readonly onManifestChanged = this._onManifestChanged.event;
     public readonly onConfigChanged = this._onConfigChanged.event;
     private _diposed = false;
@@ -33,23 +34,43 @@ export class ALApp implements Disposable, BackEndAppInfo {
         this._manifest = manifest;
         this._name = name;
         this._configUri = Uri.file(path.join(uri.fsPath, CONFIG_FILE_NAME));
-        this._config = new ObjIdConfig(this._configUri, this);
+        this._config = this.createObjectIdConfig();
 
         this._manifestWatcher = new FileWatcher(manifest.uri);
         this._manifestChanged = this._manifestWatcher.onChanged(() => this.onManifestChangedFromWatcher());
 
         this._configWatcher = new ObjIdConfigWatcher(
             this._config,
-            () => ({
-                hash: this.hash,
-                name: this._manifest.name,
-            }),
+            () => this,
             () => {
                 const newConfig = this.setUpConfigFile();
-                this._onConfigChanged.fire(newConfig.uri);
+                this._onConfigChanged.fire(this);
                 return newConfig;
             }
         );
+    }
+
+    private createObjectIdConfig(): ObjIdConfig {
+        const objIdConfig = new ObjIdConfig(this._configUri, this);
+
+        const features: string[] = [];
+        if (objIdConfig.idRanges.length > 0) {
+            features.push("logicalRanges");
+        }
+        if (objIdConfig.objectTypesSpecified.length > 0) {
+            features.push("objectRanges");
+        }
+        if (objIdConfig.appPoolId?.trim()) {
+            features.push("appPoolId");
+        }
+        if (objIdConfig.bcLicense?.trim()) {
+            features.push("bcLicense");
+        }
+        if (features.length) {
+            Telemetry.instance.logOnceAndNeverAgain(TelemetryEventType.FeatureInUse, this, { features });
+        }
+
+        return objIdConfig;
     }
 
     private onManifestChangedFromWatcher() {
@@ -69,11 +90,11 @@ export class ALApp implements Disposable, BackEndAppInfo {
             this._encryptionKey = undefined;
             this._configWatcher.updateConfigAfterAppIdChange(this.setUpConfigFile());
         }
-        this._onManifestChanged.fire(this._manifest.uri);
+        this._onManifestChanged.fire(this);
     }
 
     private setUpConfigFile(): ObjIdConfig {
-        return (this._config = new ObjIdConfig(this._configUri, this));
+        return (this._config = this.createObjectIdConfig());
     }
 
     public static tryCreate(folder: WorkspaceFolder): ALApp | undefined {

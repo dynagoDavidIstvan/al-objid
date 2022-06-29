@@ -1,5 +1,6 @@
 import { commands, TreeItemCollapsibleState } from "vscode";
 import { CodeCommand } from "../../commands/commands";
+import { Telemetry, TelemetryEventType } from "../../lib/Telemetry";
 import { PropertyBag } from "../../lib/types/PropertyBag";
 import { Node } from "./Node";
 
@@ -68,18 +69,20 @@ export class ExpandCollapseController {
     }
 
     public expand(node: Node) {
+        Telemetry.instance.log(TelemetryEventType.TreeView, undefined, { action: "expand", id: this._id });
         this._treeState.set(node, TreeItemCollapsibleState.Expanded);
         this.setHasExpanded(true);
         this.reset();
     }
 
     public collapse(node: Node) {
+        Telemetry.instance.log(TelemetryEventType.TreeView, undefined, { action: "collapse", id: this._id });
         this._treeState.set(node, TreeItemCollapsibleState.Collapsed);
         this.setHasCollapsed(true);
         this.reset();
     }
 
-    public getState(node: Node): TreeItemCollapsibleState | undefined {
+    public getState(node: Node, defaultState: TreeItemCollapsibleState): TreeItemCollapsibleState | undefined {
         if (this._expandAll) {
             return TreeItemCollapsibleState.Expanded;
         }
@@ -87,9 +90,13 @@ export class ExpandCollapseController {
             return TreeItemCollapsibleState.Collapsed;
         }
 
-        if (!this._treeState.has(node) && this._wasCollapseAll) {
-            this._treeState.set(node, TreeItemCollapsibleState.Collapsed);
-            return TreeItemCollapsibleState.Collapsed;
+        if (!this._treeState.has(node)) {
+            if (this._wasCollapseAll) {
+                this._treeState.set(node, TreeItemCollapsibleState.Collapsed);
+                return TreeItemCollapsibleState.Collapsed;
+            } else {
+                return defaultState;
+            }
         }
 
         return this._treeState.get(node);
@@ -97,5 +104,9 @@ export class ExpandCollapseController {
 
     public get iteration(): number {
         return this._iteration;
+    }
+
+    public iterate(): void {
+        this._iteration++;
     }
 }

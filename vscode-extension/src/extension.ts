@@ -1,4 +1,4 @@
-import { ExtensionContext, languages } from "vscode";
+import { commands, ExtensionContext, languages } from "vscode";
 import { NewsHandler } from "./features/NewsHandler";
 import { AuthorizationStatusBar } from "./features/AuthorizationStatusBar";
 import { PollingHandler } from "./features/PollingHandler";
@@ -13,11 +13,15 @@ import { Diagnostics } from "./features/Diagnostics";
 import { ObjIdConfigActionProvider } from "./features/ObjIdConfigCodeActionProvider";
 import { ConsumptionCache } from "./features/ConsumptionCache";
 import { WorkspaceManager } from "./features/WorkspaceManager";
-import { registerCommands } from "./commands/commands";
+import { CodeCommand, registerCommands } from "./commands/commands";
 import { ConsumptionWarnings } from "./features/ConsumptionWarnings";
 import { RangeExplorerView } from "./features/treeView/rangeExplorer/RangeExplorerView";
+import { AppPoolExplorerView } from "./features/treeView/appPoolExplorer/AppPoolExplorerView";
+import { setFlags } from "./flags";
 
 export function activate(context: ExtensionContext) {
+    setFlags();
+    commands.executeCommand(CodeCommand.SetContext, "vjeko-al-objid.active", true);
     ConsumptionWarnings.instance.setContext(context);
     Telemetry.instance.setContext(context);
 
@@ -26,6 +30,7 @@ export function activate(context: ExtensionContext) {
 
         // Tree views
         new RangeExplorerView("ninja-rangeExplorer"),
+        new AppPoolExplorerView("ninja-appPoolExplorer"),
 
         // CodeActions provider
         languages.registerCodeActionsProvider("jsonc", new ObjIdConfigActionProvider()),
@@ -49,4 +54,6 @@ export function activate(context: ExtensionContext) {
     ReleaseNotesHandler.instance.check(context);
 }
 
-export function deactivate() {}
+export function deactivate() {
+    commands.executeCommand(CodeCommand.SetContext, "vjeko-al-objid.active", false);
+}

@@ -27,19 +27,41 @@ export interface LogEntry {
     data: any;
 }
 
+interface KeyPair {
+    public: string;
+    private: string;
+}
+
 export type AppInfo = {
     _authorization: Authorization;
     _ranges: Range[];
     _log: LogEntry[];
+    _pool: {
+        joinLock: string;
+        info: string;
+        appIds: string[];
+        validationKey: KeyPair;
+        managementKey: KeyPair;
+        leaveKeys: { [key: string]: string };
+    },
 } & ObjectConsumptions;
+
+export interface PoolAppInfo {
+    appId: string;
+    name: string;
+}
+
+export interface PoolInfo {
+    name: string;
+    apps: PoolAppInfo[];
+}
 
 export interface AppBindings {
     app: AppInfo;
 }
 
-export interface DefaultBindings {};
-export interface DefaultRequest {};
-
+export interface DefaultBindings { };
+export interface DefaultRequest { };
 
 export type ChangeOperation = "getNext" | "syncMerge" | "syncFull" | "authorize" | "deauthorize";
 

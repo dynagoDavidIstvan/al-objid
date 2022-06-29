@@ -5,7 +5,6 @@ import { run as authorizeApp, disableAuthorizeAppRateLimit } from "../../src/fun
 import { StubStorage } from "../AzureTestLibrary/v2/Storage.stub";
 import { initializeCustomMatchers } from "../AzureTestLibrary/CustomMatchers";
 
-
 jest.mock("azure-storage");
 Blob.injectCreateBlobService(azure.createBlobService);
 Mock.initializeStorage(azure.createBlobService);
@@ -80,12 +79,12 @@ describe("Testing function api/v2/authorizeApp", () => {
         expect(context.bindings.notify.authorization.valid).toStrictEqual(true);
     });
 
-    it("Fails to de-authorizes a previously unknown app", async () => {
+    it("Fails to de-authorize a previously unknown app", async () => {
         const storage = new StubStorage();
         Mock.useStorage(storage.content);
         const context = new Mock.Context(new Mock.Request("DELETE", { appId: "_mock_", user: "fake" }));
         await authorizeApp(context, context.req);
-        expect(context.res).toBeStatus(405);
+        expect(context.res).toBeStatus(404);
         expect(storage).not.toHaveChanged();
     });
 

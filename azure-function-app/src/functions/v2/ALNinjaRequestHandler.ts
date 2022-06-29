@@ -1,6 +1,7 @@
-import { RequestHandler } from "@vjeko.com/azure-func";
+import { ErrorResponse, RequestHandler } from "@vjeko.com/azure-func";
 import { injectValidators } from "./injectValidators";
 import { ALNinjaRequestContext, AppBindings, AppInfo, DefaultBindings } from "./TypesV2";
+import { validatePoolSignature } from "./ValidatePoolSignature";
 
 injectValidators();
 
@@ -10,8 +11,14 @@ interface AppIdBody {
     user: string;
 }
 
+interface PoolBody {
+    _sourceAppId: string;
+    _payload: string;
+    _signature: string;
+}
+
 type ALNinjaBindings<T> = AppBindings & T;
-type ALNinjaRequest<T> = AppIdBody & T;
+type ALNinjaRequest<T> = AppIdBody & PoolBody & T;
 
 interface ALNinjaHandlerFunc<TRequest, TResponse, TBindings> {
     (context: ALNinjaRequestContext<ALNinjaRequest<TRequest>, ALNinjaBindings<TBindings>>): Promise<TResponse>;
@@ -20,6 +27,11 @@ interface ALNinjaHandlerFunc<TRequest, TResponse, TBindings> {
 export class ALNinjaRequestHandler<TRequest, TResponse, TBindings = DefaultBindings>
     extends RequestHandler<ALNinjaRequest<TRequest>, TResponse, ALNinjaBindings<TBindings>> {
     private _skipAuthorization: boolean = false;
+    private _notForPools: string[] = [];
+    private _bound: boolean = false;
+    private _requirePoolSignature: boolean = false;
+    private _requireManagementSignature: boolean = false;
+    private _requireSourceAppIdMatch: boolean = false;
 
     public constructor(handler: ALNinjaHandlerFunc<TRequest, TResponse, TBindings>, withValidation: boolean = true) {
         super(async (request) => {
@@ -49,6 +61,40 @@ export class ALNinjaRequestHandler<TRequest, TResponse, TBindings = DefaultBindi
                 request.rawContext.bindings.notify = payload;
             };
 
+            if (!this._bound) {
+                await request.bind();
+                this._bound = true;
+            }
+            const { app } = request.bindings;
+
+            if (app && app._pool) {
+                if (this._notForPools.includes("*") || this._notForPools.includes(request.method.toUpperCase())) {
+                    throw new ErrorResponse(`Cannot perform this operation on a pool`, 403);
+                }
+
+                if (this._requirePoolSignature || this._requireManagementSignature) {
+                    const { _payload, _signature } = request.body;
+                    if (!_payload || !_signature) {
+                        throw new ErrorResponse(`Signature required when performing this operation on a pool`, 403);
+                    }
+                    const key = this._requireManagementSignature ? app._pool.managementKey.public : app._pool.validationKey.public;
+                    const valid = validatePoolSignature(key, _payload, _signature);
+                    if (!valid) {
+                        throw new ErrorResponse(`Invalid signature`, 403);
+                    }
+                }
+
+                if (this._requireSourceAppIdMatch) {
+                    const { _sourceAppId } = request.body;
+                    if (!_sourceAppId) {
+                        throw new ErrorResponse("Missing _sourceAppId property", 400);
+                    }
+                    if (!app._pool.appIds.includes(_sourceAppId)) {
+                        throw new ErrorResponse(`Source app is not authorized to perform this operation`, 403);
+                    }
+                }
+            }
+
             const response = await handler(request as any);
 
             if (appUpdated) {
@@ -74,6 +120,7 @@ export class ALNinjaRequestHandler<TRequest, TResponse, TBindings = DefaultBindi
             }
 
             await req.bind();
+            this._bound = true;
 
             const { app } = req.bindings;
 
@@ -95,5 +142,21 @@ export class ALNinjaRequestHandler<TRequest, TResponse, TBindings = DefaultBindi
 
     public skipAuthorization() {
         this._skipAuthorization = true;
+    }
+
+    public notForPools(...method: string[]) {
+        this._notForPools.push(...(method.map(m => m.toUpperCase())));
+    }
+
+    public requirePoolSignature() {
+        this._requirePoolSignature = true;
+    }
+
+    public requireManagementSignature() {
+        this._requireManagementSignature = true;
+    }
+
+    public requireSourceAppIdMatch() {
+        this._requireSourceAppIdMatch = true;
     }
 }

@@ -10,6 +10,7 @@ import { Backend } from "./backend/Backend";
 import { ALObjectType } from "./types/ALObjectType";
 import { BCLicense } from "./BCLicense";
 import { ObjIdConfigLinter } from "../features/linters/ObjIdConfigLinter";
+import { Telemetry, TelemetryEventType } from "./Telemetry";
 
 interface ObjIdConfigJson {
     authKey: string;
@@ -186,7 +187,7 @@ export class ObjIdConfig {
         }
 
         const names: string[] = [];
-        const ranges = this._config.idRanges;
+        const ranges = this._config.idRanges || [];
         for (let range of ranges) {
             if (!range) {
                 continue;

@@ -35,7 +35,7 @@ export enum NinjaCommand {
     ShowReleaseNotes = "vjeko-al-objid.show-release-notes",
     CopyRanges = "vjeko-al-objid.copy-ranges",
     ConsolidateRanges = "vjeko-al-objid.consolidate-ranges",
-    CreateAppPool = "vjeko-al-objid.create-app-pool-preview",
+    CreateAppPool = "vjeko-al-objid.create-app-pool",
     ValidateLicense = "vjeko-al-objid.validate-bclicense",
     SelectBCLicense = "vjeko-al-objid.select-bclicense",
     CommitSuggestion = "vjeko-al-objid.commit-suggestion",

@@ -5,7 +5,40 @@ All notable changes to the AL Object ID Ninja extension will be documented in th
 The log is kept in [Keep a Changelog](http://keepachangelog.com/) format. This project follows
 [Semantic Versioning](https://semver.org/).
 
-## [vNext] - 2022-06-01
+## [Unreleased]
+
+Work is in progress on two upcoming features, both of which heavily depend on tree view refactoring done in 2.9.0:
+
+-   License Explorer: allows you to have better insight into licensed state of your objects. It allows to have
+    multiple active licenses and to see license report for all of them independently. Most likely to be released in
+    2.11.0.
+
+## [2.9.2] - 2022-06-15
+
+### Added
+
+-   Telemetry events included in several places where they were not previously sent.
+
+### Fixed
+
+-   Selecting folder from among workspace folders causes the _Cannot read properties of undefined (reading
+    'manifest')_ error. ([Git issue #39](https://github.com/vjekob/al-objid/issues/39))
+-   Issues when sending telemetry caused many events to be missed under certain circumstances. Race conditions in
+    executing asynchronous initialization logic prevented this issue to be identified.
+-   Selecting "Learn more" in some situations does not show a document, and shows the "<document> not found"
+    message.
+-   Initial synchronization of object IDs uses some more user-friendly and straightforward language to explain
+    what's going on.
+
+## [2.9.1] - 2022-06-08
+
+### Fixed
+
+-   Extension activation context re-introduced. Ninja now does not contribute views or commands until it becomes active.
+    This takes care of confusing situation when Ninja icon appears in activity bar or Ninja commands appear in command
+    palette, without any AL workspace being loaded or active.
+
+## [2.9.0] - 2022-06-08
 
 ### Added
 

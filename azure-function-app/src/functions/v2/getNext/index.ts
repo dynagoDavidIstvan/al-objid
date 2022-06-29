@@ -92,6 +92,8 @@ getNext.validator.expect("body", {
     "perRange?": "boolean",
     "require?": "number",
 });
+getNext.requirePoolSignature();
+getNext.requireSourceAppIdMatch();
 
 export const disableGetNextRateLimit = () => getNext.noRateLimit();
 
