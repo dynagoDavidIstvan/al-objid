@@ -27,8 +27,8 @@ export class BCLicense {
     private _valid: boolean = false;
     private _data: any;
 
-    constructor(path: string) {
-        this._uri = workspace.getWorkspaceFolder(Uri.file(path))!.uri;
+    constructor(path: string, appFolderUri?: Uri) {
+        this._uri = appFolderUri || workspace.getWorkspaceFolder(Uri.file(path))!.uri;
         this._contents = fs.readFileSync(path, { encoding: "utf16le" }).toString() || "";
         if (!this._contents) {
             return;
@@ -63,7 +63,20 @@ export class BCLicense {
                 const uri = Uri.file(object.path);
                 uriCache[object.path] = uri;
             }
+
             const objectUri = uriCache[object.path];
+            Diagnostics.instance.resetForUri(objectUri);
+
+            // Skipping obsolete objects
+            if (object.properties?.obsoletestate?.toLowerCase() === "removed") {
+                continue;
+            }
+
+            // Skipping temporary tables
+            if (object.properties?.tabletype?.toLowerCase() === "temporary") {
+                continue;
+            }
+
             const diagnose = Diagnostics.instance.createDiagnostics(objectUri, `bclicense.${object.type}.${object.id}`);
             const mappedType = objectTypeToPermissionTypeMap[object.type];
             let permissions = cache[mappedType];

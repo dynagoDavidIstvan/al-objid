@@ -13,7 +13,26 @@ Work is in progress on two upcoming features, both of which heavily depend on tr
     multiple active licenses and to see license report for all of them independently. Most likely to be released in
     2.11.0.
 
-## [2.9.2] - 2022-06-15
+## [2.10.0] - 2023-03-31
+
+### Added
+
+-   Ninja exports API so other VS Code extensions can reserve object IDs. ([Git issue #8](https://github.com/vjekob/al-objid/issues/8))
+    (Thanks for contribution, Andrzej Zwierzchowski)
+-   When publisher is "Microsoft", no user-identifiable information is ever sent to the back-end for the purpose of
+    notifying the other team members which user has consumed which object ID.
+-   Protected publishers feature added. This allows publishers who don't want to use the notifications feature about
+    consumed object IDs to be explicitly prevented by Ninja to share such info.
+
+### Fixed
+
+-   Config file cannot specify relative license path that specifies levels up from current workspace folder.
+    ([Git issue #52](https://github.com/vjekob/al-objid/issues/52)).
+-   Obsolete objects are shown as not included in license. ([Git issue #47](https://github.com/vjekob/al-objid/issues/47))
+-   Temporary tables are shown as not included in license. ([Git issue #40](https://github.com/vjekob/al-objid/issues/40))
+-   Issue with occasional message about scheduled maintenance, saying that the service will be "ready agan in NaN minute(s)".
+
+## [2.9.2] - 2023-03-26
 
 ### Added
 
