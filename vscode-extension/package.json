@@ -3,7 +3,7 @@
     "displayName": "AL Object ID Ninja",
     "description": "Manage object IDs in multi-user environments with mind-boggling simplicity.",
     "publisher": "vjeko",
-    "version": "2.10.0",
+    "version": "2.11.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/vjekob/al-objid.git"
@@ -118,6 +118,12 @@
                 "title": "Validate object IDs against license"
             },
             {
+                "command": "vjeko-al-objid.report-consumption",
+                "category": "Ninja",
+                "title": "Report consumption",
+                "icon": "$(export)"
+            },
+            {
                 "command": "vjeko-al-objid.select-bclicense",
                 "category": "Ninja",
                 "title": "Select default license for validation"
@@ -139,6 +145,11 @@
                 "category": "Ninja",
                 "title": "Go to definition",
                 "icon": "$(go-to-file)"
+            },
+            {
+                "command": "vjeko-al-objid.quickfix-store-id-assignment",
+                "category": "Ninja",
+                "title": "Store ID assignment"
             }
         ],
         "configuration": {
@@ -268,6 +279,11 @@
                     "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-sync,/"
                 },
                 {
+                    "command": "vjeko-al-objid.report-consumption",
+                    "group": "inline",
+                    "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-sync,/"
+                },
+                {
                     "command": "vjeko-al-objid.goto-definition",
                     "group": "inline",
                     "when": "view == ninja-rangeExplorer && viewItem =~ /,ninja-goto-def,/"
@@ -337,6 +353,10 @@
                     "when": "vjeko-al-objid.active == true"
                 },
                 {
+                    "command": "vjeko-al-objid.report-consumption",
+                    "when": "vjeko-al-objid.active == true"
+                },
+                {
                     "command": "vjeko-al-objid.expand-all-rangeExplorer",
                     "when": "false"
                 },
@@ -375,6 +395,6 @@
         "@vjeko.com/al-parser-types": "^0.0.4",
         "@vjeko.com/al-parser-types-ninja": "^1.0.11",
         "comment-json": "^4.1.1",
-        "xml2js": "^0.4.23"
+        "xml2js": "^0.5.0"
     }
 }

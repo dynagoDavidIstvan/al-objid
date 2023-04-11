@@ -19,6 +19,8 @@ import { selectBCLicense } from "./select-bclicense";
 import { showReleaseNotes } from "./show-release-notes";
 import { syncObjectIds } from "./sync-object-ids";
 import { validateLicense } from "./validate-bclicense";
+import { reportConsumption } from "./report-consumption";
+import { QuickFixStoreIdAssignment } from "./quickfix-store-id-assignment";
 
 export enum CodeCommand {
     SetContext = "setContext",
@@ -38,6 +40,7 @@ export enum NinjaCommand {
     CreateAppPool = "vjeko-al-objid.create-app-pool",
     ValidateLicense = "vjeko-al-objid.validate-bclicense",
     SelectBCLicense = "vjeko-al-objid.select-bclicense",
+    ReportConsumption = "vjeko-al-objid.report-consumption",
     CommitSuggestion = "vjeko-al-objid.commit-suggestion",
     SyncObjectIds = "vjeko-al-objid.sync-object-ids",
     AuthorizeApp = "vjeko-al-objid.authorize-app",
@@ -45,6 +48,7 @@ export enum NinjaCommand {
     QuickFixRemoveDeclaration = "vjeko-al-objid.quickfix-remove-declaration",
     QuickFixSelectValidType = "vjeko-al-objid.quickfix-select-valid-type",
     QuickFixRemoveProperty = "vjeko-al-objid.quickfix-remove-property",
+    QuickFixStoreIdAssignment = "vjeko-al-objid.quickfix-store-id-assignment",
     ExpandAllRangeExplorer = "vjeko-al-objid.expand-all-rangeExplorer",
     CollapseAllRangeExplorer = "vjeko-al-objid.collapse-all-rangeExplorer",
     GoToDefinition = "vjeko-al-objid.goto-definition",
@@ -61,6 +65,7 @@ export const commandMap: { [key: string]: (...args: any[]) => any } = {
     [NinjaCommand.CreateAppPool]: createAppPool,
     [NinjaCommand.ValidateLicense]: validateLicense,
     [NinjaCommand.SelectBCLicense]: selectBCLicense,
+    [NinjaCommand.ReportConsumption]: reportConsumption,
     [NinjaCommand.CommitSuggestion]: commitSuggestion,
     [NinjaCommand.SyncObjectIds]: syncObjectIds,
     [NinjaCommand.AuthorizeApp]: authorizeApp,
@@ -68,6 +73,7 @@ export const commandMap: { [key: string]: (...args: any[]) => any } = {
     [NinjaCommand.QuickFixRemoveDeclaration]: quickFixRemoveDeclaration,
     [NinjaCommand.QuickFixSelectValidType]: quickFixSelectValidType,
     [NinjaCommand.QuickFixRemoveProperty]: quickFixRemoveProperty,
+    [NinjaCommand.QuickFixStoreIdAssignment]: QuickFixStoreIdAssignment,
     [NinjaCommand.ExpandAllRangeExplorer]: expandAllRangeExplorer,
     [NinjaCommand.CollapseAllRangeExplorer]: collapseAllRangeExplorer,
     [NinjaCommand.GoToDefinition]: goToDefinition,

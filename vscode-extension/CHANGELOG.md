@@ -10,8 +10,19 @@ The log is kept in [Keep a Changelog](http://keepachangelog.com/) format. This p
 Work is in progress on two upcoming features, both of which heavily depend on tree view refactoring done in 2.9.0:
 
 -   License Explorer: allows you to have better insight into licensed state of your objects. It allows to have
-    multiple active licenses and to see license report for all of them independently. Most likely to be released in
-    2.11.0.
+    multiple active licenses and to see license report for all of them independently.
+-   Managed app pools: allows you to create app pools with full control of apps included in them. Existing unmanaged
+    pools allow anyone who knows the pool ID to join their app into a pool. Managed pools allow you to control who
+    can join the pool, you can remove apps from pool centrally, and you can make sure that only apps that are actually
+    a part of the pool to assign object IDs to that pool.
+
+## [2.11.0] - 2023-04-07
+
+### Added
+
+-   Consumption Report: gives you a summary of object consumption per object type, which is very useful for license
+    management. You can choose whether to save the report in a file or to copy it to clipboard. Supports text, JSON,
+    CSV, and XML formats. ([Git issue #33](https://gitub.com/vjekob/al-objid/issues/33))
 
 ## [2.10.0] - 2023-03-31
 
