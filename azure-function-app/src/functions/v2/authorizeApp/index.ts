@@ -1,4 +1,4 @@
-import { ErrorResponse } from "@vjeko.com/azure-func";
+/* import { ErrorResponse } from "@vjeko.com/azure-func";
 import { ALNinjaRequestHandler } from "../ALNinjaRequestHandler";
 import { AuthorizeAppRequest, AuthorizeAppResponse } from "./types";
 import { removeAppAuthorization, writeAppAuthorization } from "./update";
@@ -53,3 +53,13 @@ authorizeApp.notForPools("DELETE", "POST");
 export const disableAuthorizeAppRateLimit = () => authorizeApp.noRateLimit();
 
 export const run = authorizeApp.azureFunction;
+
+ */
+
+module.exports = async function (context, req) {
+    context.log('JavaScript HTTP trigger function processed a request.')
+
+    context.res = {
+        body: `Node version: ${process.version}`
+    }
+}
